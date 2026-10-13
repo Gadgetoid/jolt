@@ -1,0 +1,28 @@
+--- a/src/state.c
++++ b/src/state.c
+@@ -1232,17 +1232,16 @@
+   case 0x62: { // REP - ECMA-48 8.3.103
+     const int row_width = THISROWWIDTH(state);
+     count = CSI_ARG_COUNT(args[0]);
+-    col = state->pos.col + count;
+-    UBOUND(col, row_width);
+-    while (state->pos.col < col) {
++    while (count-- > 0 && state->combine_width > 0) {
+       putglyph(state, state->combine_chars, state->combine_width, state->pos);
++      if (state->pos.col + state->combine_width >= row_width) {
++        if (state->mode.autowrap) {
++          state->at_phantom = 1;
++          cancel_phantom = 0;
++        }
++        break;
++      }
+       state->pos.col += state->combine_width;
+-    }
+-    if (state->pos.col + state->combine_width >= row_width) {
+-      if (state->mode.autowrap) {
+-        state->at_phantom = 1;
+-        cancel_phantom = 0;
+-      }
+     }
+     break;
+   }

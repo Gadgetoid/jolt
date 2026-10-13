@@ -238,7 +238,10 @@ static LONG open_at(DWORD directory, DWORD path, DWORD flags) {
     if (result) return result;
     DWORD type = 0;
     result = jolt_file_open(absolute, flags, &type);
-    if (result) return result;
+    if (result) {
+        trace("open %s = %ld\r\n", absolute, result);
+        return result;
+    }
     DWORD stored = flags & ~(DWORD)(LINUX_O_CREAT | LINUX_O_EXCL | LINUX_O_TRUNC | LINUX_O_CLOEXEC);
     if (type == DESCRIPTION_TTY) stored = (stored & ~(DWORD)LINUX_O_ACCMODE) | LINUX_O_RDWR;
     jolt_lock();

@@ -1,0 +1,16 @@
+--- a/src/curses/ux_init.c
++++ b/src/curses/ux_init.c
+@@ -224,13 +224,6 @@
+ 
+ 	zoptarg = NULL;
+ 
+-#if !defined(WIN32) && !defined(__HAIKU__)
+-	if ((getuid() == 0) || (geteuid() == 0)) {
+-		printf("I won't run as root!\n");
+-		os_quit(EXIT_FAILURE);
+-	}
+-#endif
+-
+ #ifdef WIN32
+ #define HOMEDIR "USERPROFILE"
+ #else

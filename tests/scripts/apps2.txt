@@ -1,0 +1,11 @@
+echo '{"name":"jolt","apps":[1,2,3]}' | jq -M -c '.apps | map(. * 2)'
+micropython -c "import sys, asyncio; print('mpy', sys.implementation.name, sum(range(10)))"
+printf 'print([x*x for x in range(5)])\\n' > /tmp/m.py && micropython /tmp/m.py
+nano --version | head -1
+ncdu -v
+htop --version | head -1
+frotz -v 2>&1 | head -1
+ls /usr/share/games/zork
+joltfetch | sed 's/\\x1b\\[[0-9;]*m//g' | grep -E "OS|Host|Memory|Packages" | cut -c32-
+cat /proc/jolt | head -3
+exit 0

@@ -9,3 +9,4 @@ mount -a 2>/dev/null
 [ -r /etc/motd ] && cat /etc/motd
 alias ll='ls -lh'
 alias la='ls -A'
+alias neofetch=joltfetch

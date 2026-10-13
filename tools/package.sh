@@ -14,6 +14,10 @@ for app in build/apps/bin/*; do
     [[ -f $app ]] || continue
     cp "$app" "$stage/root/usr/bin/"
 done
+if [[ -d build/apps/share ]]; then
+    mkdir -p "$stage/root/usr/share"
+    cp -R build/apps/share/. "$stage/root/usr/share/"
+fi
 find "$stage" -name .keep -delete
 mkdir -p "$stage/root/tmp"
 for pair in "LICENSE:LICENSE.txt" "THIRD-PARTY.md:THIRD-PARTY.txt" "docs/card-readme.txt:README.txt"; do

@@ -5,6 +5,7 @@
 #include "procfs.h"
 #include "kernel.h"
 #include "linux.h"
+#include "text.h"
 
 #define PROC_ROOT "/proc"
 #define SELF_LINK "self"
@@ -22,9 +23,11 @@
 #define CE_UNKNOWN_LIFE 0xffffffffUL
 #define CE_UNKNOWN_PERCENT 255
 #define SECONDS_PER_MINUTE 60
+#define HOST_TEXT_CAPACITY 128
+#define OWNER_NAME_LENGTH 36
 
 enum proc_file {
-    FILE_NONE, FILE_APM, FILE_STAT, FILE_MEMINFO, FILE_UPTIME, FILE_LOADAVG, FILE_VERSION, FILE_CPUINFO, FILE_MOUNTS,
+    FILE_NONE, FILE_APM, FILE_JOLT, FILE_STAT, FILE_MEMINFO, FILE_UPTIME, FILE_LOADAVG, FILE_VERSION, FILE_CPUINFO, FILE_MOUNTS,
     FILE_PROCESS_STAT, FILE_PROCESS_STATUS, FILE_PROCESS_CMDLINE, FILE_PROCESS_COMM, FILE_PROCESS_EXE
 };
 
@@ -34,7 +37,7 @@ struct proc_name {
 };
 
 static const struct proc_name system_files[] = {
-    { "apm", FILE_APM }, { "cpuinfo", FILE_CPUINFO }, { "loadavg", FILE_LOADAVG }, { "meminfo", FILE_MEMINFO },
+    { "apm", FILE_APM }, { "cpuinfo", FILE_CPUINFO }, { "jolt", FILE_JOLT }, { "loadavg", FILE_LOADAVG }, { "meminfo", FILE_MEMINFO },
     { "mounts", FILE_MOUNTS }, { "stat", FILE_STAT }, { "uptime", FILE_UPTIME }, { "version", FILE_VERSION },
 };
 
@@ -293,6 +296,58 @@ static LONG render_mounts(char *buffer, DWORD capacity) {
     return used;
 }
 
+static void host_text(const WCHAR *wide, char *text) {
+    DWORD used = jolt_utf8_from_wide(wide, text, HOST_TEXT_CAPACITY - 1);
+    text[used] = 0;
+}
+
+static void registry_text(HKEY root, const WCHAR *key_name, const WCHAR *value_name, DWORD limit, char *text) {
+    WCHAR value[HOST_TEXT_CAPACITY];
+    HKEY key;
+    DWORD type = 0, size = sizeof value;
+    value[0] = 0;
+    if (RegOpenKeyExW(root, key_name, 0, 0, &key) == ERROR_SUCCESS) {
+        if (RegQueryValueExW(key, value_name, NULL, &type, (BYTE *)value, &size) != ERROR_SUCCESS ||
+            (type != REG_SZ && type != REG_BINARY))
+            value[0] = 0;
+        RegCloseKey(key);
+    }
+    value[limit < HOST_TEXT_CAPACITY ? limit : HOST_TEXT_CAPACITY - 1] = 0;
+    host_text(value, text);
+}
+
+static void system_parameter_text(UINT action, char *text) {
+    WCHAR value[HOST_TEXT_CAPACITY];
+    value[0] = 0;
+    if (!SystemParametersInfoW(action, sizeof value, value, 0)) value[0] = 0;
+    value[HOST_TEXT_CAPACITY - 1] = 0;
+    host_text(value, text);
+}
+
+static LONG render_jolt(char *buffer, DWORD capacity) {
+    char oem[HOST_TEXT_CAPACITY], platform[HOST_TEXT_CAPACITY], device[HOST_TEXT_CAPACITY], owner[HOST_TEXT_CAPACITY];
+    OSVERSIONINFOW version;
+    STORE_INFORMATION store;
+    memset(&version, 0, sizeof version);
+    version.dwOSVersionInfoSize = sizeof version;
+    GetVersionExW(&version);
+    memset(&store, 0, sizeof store);
+    GetStoreInformation(&store);
+    system_parameter_text(SPI_GETOEMINFO, oem);
+    system_parameter_text(SPI_GETPLATFORMTYPE, platform);
+    registry_text(HKEY_LOCAL_MACHINE, L"Ident", L"Name", HOST_TEXT_CAPACITY, device);
+    registry_text(HKEY_CURRENT_USER, L"ControlPanel\\Owner", L"Owner", OWNER_NAME_LENGTH, owner);
+    HDC screen = GetDC(NULL);
+    int depth = screen ? GetDeviceCaps(screen, BITSPIXEL) * GetDeviceCaps(screen, PLANES) : 0;
+    if (screen) ReleaseDC(NULL, screen);
+    return snprintf(buffer, capacity,
+        "version: %s\nce_version: %lu.%02lu\nce_build: %lu\noem: %s\nplatform: %s\ndevice: %s\nowner: %s\n"
+        "display: %dx%dx%d\nstore_kb: %lu\nstore_free_kb: %lu\n",
+        JOLT_VERSION, version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber, oem, platform,
+        device, owner, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), depth,
+        store.dwStoreSize / 1024, store.dwFreeSize / 1024);
+}
+
 static LONG render_system(enum proc_file file, char *buffer, DWORD capacity) {
     MEMORYSTATUS memory;
     DWORD ticks = uptime_ticks();
@@ -322,6 +377,8 @@ static LONG render_system(enum proc_file file, char *buffer, DWORD capacity) {
         return render_mounts(buffer, capacity);
     case FILE_APM:
         return render_apm(buffer, capacity);
+    case FILE_JOLT:
+        return render_jolt(buffer, capacity);
     default:
         return -(LONG)LINUX_EINVAL;
     }

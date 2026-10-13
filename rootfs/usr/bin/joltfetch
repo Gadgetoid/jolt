@@ -1,0 +1,101 @@
+#!/bin/sh
+green='\033[1;32m'
+dark='\033[0;32m'
+bold='\033[1m'
+reset='\033[0m'
+
+field() {
+    while IFS= read -r line; do
+        case "$line" in
+            "$1: "*) printf '%s' "${line#"$1: "}"; return ;;
+        esac
+    done < /proc/jolt
+}
+
+meminfo() {
+    while read -r name value unit; do
+        [ "$name" = "$1:" ] && { printf '%s' "$value"; return; }
+    done < /proc/meminfo
+}
+
+cpuinfo() {
+    while IFS= read -r line; do
+        case "$line" in
+            "$1"*) printf '%s' "${line#*: }"; return ;;
+        esac
+    done < /proc/cpuinfo
+}
+
+duration() {
+    seconds=$1
+    days=$((seconds / 86400)); hours=$((seconds % 86400 / 3600)); minutes=$((seconds % 3600 / 60))
+    text=""
+    [ "$days" -gt 0 ] && text="${days}d "
+    [ "$hours" -gt 0 ] && text="${text}${hours}h "
+    printf '%s' "${text}${minutes}m"
+}
+
+count_files() {
+    count=0
+    for file in "$1"/*; do [ -e "$file" ] && count=$((count + 1)); done
+    printf '%s' "$count"
+}
+
+host_model() {
+    oem=$(field oem)
+    case "$oem" in
+        *,*) maker=${oem%%,*}; rest=${oem#*,}; rest=${rest# }; printf '%s %s' "$maker" "${rest%%,*}" ;;
+        *) printf '%s' "$oem" ;;
+    esac
+}
+
+read -r uptime rest < /proc/uptime
+total=$(meminfo MemTotal)
+available=$(meminfo MemAvailable)
+read -r _ _ _ ac _ _ percent _ < /proc/apm
+case "$ac" in 0x01) power="AC" ;; 0x00) power="battery" ;; *) power="unknown" ;; esac
+[ "$percent" = "-1%" ] && percent="?"
+set -- $(df -k / | tail -1)
+storage_used=$(($3 / 1024)); storage_total=$(($2 / 1024))
+rows_columns=$(stty size 2>/dev/null)
+display=$(field display)
+user=$(field owner)
+[ -n "$user" ] || user=${USER:-root}
+host=$(field device)
+[ -n "$host" ] || host=$(hostname)
+
+title="$user@$host"
+underline=$(printf '%s' "$title" | sed 's/./-/g')
+
+logo_1='                  _   _______'
+logo_2=' _______   ___   | | |__   __|'
+logo_3='|__    /  / _ \  | |    | |'
+logo_4='   /  /_ | (_) | | |__  | |'
+logo_5='  /_  _/  \___/  |____| |_|'
+logo_6='    / /'
+logo_7='   //'
+logo_8='  /'
+
+row() {
+    printf "$green%-31s$reset" "$1"
+    [ -n "$2" ] && printf "$green$bold%s$reset: %s" "$2" "$3"
+    printf '\n'
+}
+
+printf "$green%-31s$reset$green$bold%s$reset\n" "$logo_1" "$title"
+printf "$green%-31s$reset%s\n" "$logo_2" "$underline"
+row "$logo_3" "OS" "JoLT $(field version) on Windows CE $(field ce_version) build $(field ce_build)"
+row "$logo_4" "Host" "$(host_model)"
+row "$logo_5" "Kernel" "$(uname -m) $(uname -r)"
+row "$logo_6" "Uptime" "$(duration "${uptime%.*}")"
+row "$logo_7" "Packages" "$(count_files /bin) applets, $(count_files /usr/bin) programs"
+row "$logo_8" "Shell" "ash (BusyBox)"
+row "" "Terminal" "JoLT-Term ${rows_columns#* }x${rows_columns% *}, $TERM"
+row "" "Display" "${display%x*} at ${display##*x}-bit"
+row "" "CPU" "$(cpuinfo Processor) ($(cpuinfo BogoMIPS) BogoMIPS)"
+row "" "Memory" "$(((total - available) / 1024)) MiB / $((total / 1024)) MiB"
+row "" "Storage" "$storage_used MiB / $storage_total MiB"
+row "" "Power" "$power, $percent"
+printf '%31s' ''
+for colour in 0 1 2 3 4 5 6 7; do printf '\033[4%sm   ' "$colour"; done
+printf "$reset\n"

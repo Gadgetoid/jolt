@@ -41,6 +41,27 @@ fetch ncurses-6.6.tar.gz https://ftp.gnu.org/gnu/ncurses/ncurses-6.6.tar.gz \
     355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2009b749ff11
 fetch vim-9.2.1178.tar.gz https://github.com/vim/vim/archive/refs/tags/v9.2.1178.tar.gz \
     62b4a204676f0e2d6c11f1951ac204b1c83d22cd3f383599e7455e96cf87a68a
+fetch nano-9.2.tar.xz https://ftp.gnu.org/gnu/nano/nano-9.2.tar.xz \
+    05ecb99247b782e8a5b3a25ed4101dd034b0236902f7449bc9795b717642f7e9
+fetch ncdu-1.22.tar.gz https://dev.yorhel.nl/download/ncdu-1.22.tar.gz \
+    0ad6c096dc04d5120581104760c01b8f4e97d4191d6c9ef79654fa3c691a176b
+fetch jq-1.8.2.tar.gz https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-1.8.2.tar.gz \
+    71b8d6e8f5fe81f6c6d0d110e3892251f6ce76ed095abd315e26e6e1193af3af
+fetch micropython-1.29.0.tar.gz https://github.com/micropython/micropython/archive/refs/tags/v1.29.0.tar.gz \
+    8072f6ad42c0e3bbfca88ed09bf8f1106ce207a39129af920f70081b8f2fe286
+fetch htop-3.5.3.tar.xz https://github.com/htop-dev/htop/releases/download/3.5.3/htop-3.5.3.tar.xz \
+    a8b164386494cb85bb255a415a3f5f80afe7a0c4491da5d113b3a0f951087e65
+fetch frotz-2.55.tar.gz https://gitlab.com/DavidGriffith/frotz/-/archive/2.55/frotz-2.55.tar.gz \
+    a8c4c4d79a2aa9b39e0efbbd3e0803f1dc5ef36f75f2c2945e295d190575eb09
+zork=https://raw.githubusercontent.com/historicalsource
+fetch zork1.z3 "$zork/zork1/97b7b3d68c075dd9af7da499c3e9690ada3471fd/COMPILED/zork1.z3" \
+    37084966477dff679282de42974b2077156b1bd68fad92a65d4ea94d8eb64d79
+fetch zork2.z3 "$zork/zork2/3da9661098809788a99cef00f00c865c6c204f96/COMPILED/zork2.z3" \
+    3ae7d5558943e9721f3e4b273c8a7faec1a03a604e1ae4ee1cde472c21cb24ac
+fetch zork3.z3 "$zork/zork3/3ec9ed412b5f3cafe65d83c727d07db1fe4a86a8/COMPILED/zork3.z3" \
+    b637a242865d059890184164ce8dec28554cc80901dcbf26c740b2d1ed0d4eb8
+fetch zork-LICENSE "$zork/zork1/97b7b3d68c075dd9af7da499c3e9690ada3471fd/LICENSE" \
+    98a96c38494df4963951e32b81ec4effebe4c8a812ab8d9e7d185d59e86fe2fc
 crypto=https://raw.githubusercontent.com/B-Con/crypto-algorithms/cfbde48414baacf51fc7c74f275190881f037d32
 fetch sha256.c "$crypto/sha256.c" 4cbc93d30c28cee2a056d6f52cbce6e66ff9450f1d712ee4f59761b9b4486fad
 fetch sha256.h "$crypto/sha256.h" a946e621775fd8251624e77d19f25407c4b6074ab780027e5797b77c7acf79b5

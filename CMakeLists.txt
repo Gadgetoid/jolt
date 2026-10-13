@@ -3,6 +3,13 @@ project(jolt C)
 
 include(JornadaCE)
 
+execute_process(COMMAND git describe --tags --always --dirty WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    OUTPUT_VARIABLE JOLT_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(NOT JOLT_VERSION)
+    set(JOLT_VERSION dev)
+endif()
+add_compile_definitions(JOLT_VERSION="${JOLT_VERSION}")
+
 set(JOLT_DEPS "${CMAKE_CURRENT_SOURCE_DIR}/build/deps" CACHE PATH "Fetched third-party sources (tools/fetch.sh)")
 set(JOLT_GUEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/guest" CACHE PATH "Guest build output with guest-manifest.h")
 

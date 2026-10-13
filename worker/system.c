@@ -180,7 +180,7 @@ LONG sys_uname(const DWORD *arguments) {
     memset(&name, 0, sizeof name);
     strcpy(name.system, "Linux");
     strcpy(name.node, "jornada");
-    strcpy(name.release, "0.2-jolt");
+    strncpy(name.release, JOLT_VERSION "-jolt", sizeof name.release - 1);
     strcpy(name.version, "JoLT native compatibility layer on Windows CE 3.0");
     strcpy(name.machine, "armv4l");
     strcpy(name.domain, "(none)");

@@ -24,12 +24,18 @@ NETWORK SUPPORT??
 
 - Loader runs ELF programs other than busybox.elf - DONE (JoLT ABI note instead of a hash manifest; JOLT_ALLOW_UNMARKED=1 overrides)
 - Lua - DONE (5.4.7)
+- nano - DONE (9.2)
 - mg or kilo
-- jq
+- jq - DONE (1.8.2)
+- ncdu - DONE (1.22)
+- htop - DONE (3.5.3)
+- joltfetch, a neofetch for JoLT - DONE (/proc/jolt carries the CE details)
 - sqlite3 shell
-- frotz
+- frotz - DONE (2.55, with Zork I-III under MIT as `zork [1|2|3]`)
 - vim (tiny feature set, builtin termcap) - DONE (Vim 9.2 tiny over ncurses 6.6; normal needs a larger image limit)
-- MicroPython UNIX port
+- MicroPython UNIX port - DONE (1.29; no threads, FFI or SSL)
+- ping and traceroute via CE IcmpSendEcho (WsControl) behind emulated raw ICMP sockets
+- sqlite3 shell, NetHack
 
 ### Serial
 

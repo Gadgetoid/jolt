@@ -23,7 +23,7 @@ const expectations = {
     lua: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["lua lua 5.4\t42\tababab", "sum\t20000", "\r\nwritten by lua\r\n", "time\ttrue\t4", "script argument", "\r\njolt\r\n", "/tmp/unmarked was not built for jolt", "unmarked status 126", "\r\nlua 5.4.7  copyright"] },
     network: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\nserved by busybox httpd\r\n", "\r\n24\r\n", "\r\nthrough netcat\r\n"] },
     extras: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["killall 0", "timeout status 143", "360: 2 2 2 3 3 5", "\r\n10\r\n", "e7c22b99", "a  \\n   b  \\n", "2 directories", "nice ok", "\r\nhistory ok"] },
-    qol: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\nx.txt\r\ny.txt\r\n", "\r\n2\r\n", "l2 match l4 ", "size 2.0M", "\r\nSHOUT\r\n", "a/x.txt: OK", "\r\nrandom ok", "math 1099511627776", "\r\n/tmp/q/a\r\n", "beep 0", "\r\n3\r\n", "\r\n/usr/bin/ \r\n"] },
+    qol: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\nx.txt\r\ny.txt\r\n", "\r\n2\r\n", "l2 match l4 ", "size 2.0M", "\r\nSHOUT\r\n", "a/x.txt: OK", "\r\nrandom ok", "math 1099511627776", "\r\n/tmp/q/a\r\n", "beep 0", "\r\n3\r\n", "\r\n/usr/bin/ /usr/share/ \r\n"] },
     desktop: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\\my documents on /mnt/docs", "\r\n2\r\n", "\r\nhello\r\n", "\r\n/mnt/win\r\n", "\r\nclip from jolt\r\n", "\r\nmore\r\n", "10, 240", "1.16 1.2 0x03"] },
     vim: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["vi improved 9.2", "\r\nxterm-256color\r\n", "\r\nllo from vim\r\n"] },
     shortcut: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["55#\"\\storage card\\jolt\\jolt-term.exe\" -e \"echo hi; ssh -v\"", "43#\"\\storage card\\jolt\\jolt-term.exe\" -e \"top\"", "bad 1", "dropbear v2026"] },
@@ -32,6 +32,7 @@ const expectations = {
     hold: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\nheld command\r\n", "\r\nin shell after hold\r\n"] },
     "ssh-probe": { result: [], tty: [] },
     serial: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["4,  64", "4,  67", "'/dev/ttys0': resource busy", "'/dev/ttys1': no such device", "speed 115200 baud", "\r\nhello serial\r\n", "\r\nmicro\r", "microcom status 0"] },
+    apps2: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\n[2,4,6]\r\n", "mpy micropython 45", "[0, 1, 4, 9, 16]", "gnu nano, version 9.2", "ncdu 1.22", "htop 3.5.3", "frotz v2.55", "zork1.z3", "os: jolt", "windows ce 3.00", "host: hp jornada 720", "packages: "] },
     netapps: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\n32\r\n", "\r\n1\r\n", "jolt links test", "rendered in text mode."] },
     vi: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\njolt edited this file.\r\n"] },
 };

@@ -1,0 +1,6 @@
+#!/bin/sh
+game=${1:-1}
+case "$game" in
+    1|2|3) exec frotz /usr/share/games/zork/zork$game.z3 ;;
+    *) echo "usage: zork [1|2|3]" >&2; exit 1 ;;
+esac

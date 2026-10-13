@@ -1,0 +1,6 @@
+vi /tmp/vi.txt
+iJoLT edited this file.\c
+\e\c
+:wq
+cat /tmp/vi.txt
+exit 0

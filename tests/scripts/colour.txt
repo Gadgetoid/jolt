@@ -1,0 +1,6 @@
+mkdir -p /tmp/colour; touch /tmp/colour/plain.txt; ls --color=always /tmp/colour /bin/ls | cat -v | head -3
+printf '\\033[1;31mbold red\\033[0m \\033[42mgreen back\\033[0m \\033[4munderline\\033[0m\\n'
+jolt theme solarized
+jolt theme bogus 2>/dev/null; echo "theme status $?"
+jolt theme classic
+exit 0

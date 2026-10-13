@@ -1,0 +1,17 @@
+mkdir -p /tmp/q/a/b && echo one > /tmp/q/a/x.txt && echo two > /tmp/q/a/b/y.txt
+find /tmp/q -type f -name '*.txt' | xargs -I {} basename {} | sort
+find /tmp/q -maxdepth 1 -type d | wc -l
+printf 'l1\\nl2\\nmatch\\nl4\\nl5\\n' | grep -C1 match | tr '\\n' ' '; echo
+dd if=/dev/zero of=/tmp/q/big bs=1024 count=2048 2>/dev/null; ls -lh /tmp/q/big | awk '{print "size " $5}'
+echo shout | tr '[:lower:]' '[:upper:]'
+cd /tmp/q && sha256sum a/x.txt > sums && sha256sum -c sums; cd /
+ls --help 2>&1 | grep -c Usage
+[ "$RANDOM" != "$RANDOM" ] && echo random ok
+echo "math $((1 << 40))"
+readlink -f /tmp/q/../q/a
+beep -f 880 -l 50; echo "beep $?"
+printf '\\007'; echo bell sent
+which ssl_client crc32 ttysize | wc -l
+cat /etc/hosts/ 2>&1 | grep -c "Not a directory"
+ls -d /usr/*/ | tr "\\n" " "; echo
+exit 0

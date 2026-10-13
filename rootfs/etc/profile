@@ -1,0 +1,11 @@
+export PATH=/bin:/usr/bin
+export HOME=/
+export PS1='\w \$ '
+export EDITOR=vi
+export PAGER=less
+export LESS=-R
+umask 022
+mount -a 2>/dev/null
+[ -r /etc/motd ] && cat /etc/motd
+alias ll='ls -lh'
+alias la='ls -A'

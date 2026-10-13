@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.20)
+project(jolt_builtins C ASM)
+
+set(BUILTINS_SOURCE "" CACHE PATH "compiler-rt lib/builtins sources")
+set(SYSROOT_INCLUDE "" CACHE PATH "musl sysroot include directory")
+file(GLOB builtin_sources "${BUILTINS_SOURCE}/*.c")
+list(FILTER builtin_sources EXCLUDE REGEX "/(atomic.*|cpu_model.*|crt.*|gcc_personality_v0|enable_execute_stack|clear_cache|emutls|os_version_check|trampoline_setup)\\.c$")
+list(FILTER builtin_sources EXCLUDE REGEX "/[^/]*(xf|tf|ti|xc3|tc3|kc3|kf|bf|hf)[^/]*\\.c$")
+add_library(jolt_builtins STATIC ${builtin_sources} eabi.S eabi.c)
+target_include_directories(jolt_builtins PRIVATE "${BUILTINS_SOURCE}" "${SYSROOT_INCLUDE}")
+target_compile_options(jolt_builtins PRIVATE -march=armv4 -marm -mfloat-abi=soft -Os -ffunction-sections -fdata-sections)

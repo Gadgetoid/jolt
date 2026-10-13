@@ -1,0 +1,11 @@
+ls -l /dev/ttyS0 /dev/ttyS1 /dev/ttyS2 /dev/ttyS3
+timeout 3 cat /dev/ttyS0; echo "ttyS0 status $?"
+timeout 3 cat /dev/ttyS1; echo "ttyS1 status $?"
+stty -F /dev/ttyS3 115200 raw -echo; echo "stty status $?"
+stty -F /dev/ttyS3 | head -1
+exec 3<>/dev/ttyS3
+echo "hello serial" >&3
+timeout 5 head -c 13 <&3
+exec 3>&-
+printf 'micro\\n' | microcom -t 1500 -s 115200 /dev/ttyS3; echo "microcom status $?"
+exit 0

@@ -1,0 +1,5 @@
+jolt win
+jolt lm
+jolt font 16
+seq 1 60
+@scroll 20

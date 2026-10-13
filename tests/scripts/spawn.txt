@@ -1,0 +1,2 @@
+for i in $(seq 1 40); do ls /etc > /dev/null || echo "failed $i"; done; echo "spawned all"
+exit 0

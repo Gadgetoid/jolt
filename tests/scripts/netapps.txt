@@ -1,0 +1,9 @@
+head -c 32 /dev/urandom | wc -c
+dropbearkey -t ed25519 -f /tmp/key 2>&1 | grep -c "Public key portion"
+dbclient -V 2>&1 | grep -c Dropbear
+mkdir -p /tmp/www && echo '<html><body><h1>JoLT links test</h1><p>Rendered in text mode.</p></body></html>' > /tmp/www/page.html
+httpd -p 8081 -h /tmp/www
+sleep 1
+links -dump http://127.0.0.1:8081/page.html
+killall httpd; echo done
+exit 0

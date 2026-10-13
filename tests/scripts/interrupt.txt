@@ -1,0 +1,5 @@
+sleep 30
+@wait 1500
+\x03\c
+echo "after interrupt $?"
+exit 0

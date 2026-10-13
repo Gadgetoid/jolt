@@ -1,0 +1,1 @@
+-e "echo launched with $(echo args); exit 3"

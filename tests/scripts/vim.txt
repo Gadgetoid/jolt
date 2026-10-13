@@ -1,0 +1,8 @@
+vim --version | head -1
+echo $TERM
+vim -u NONE /tmp/vim.txt
+@wait 3000
+ihello from vim\e0\e[3~\e[3~:wq\r
+@wait 1500
+cat /tmp/vim.txt
+exit 0

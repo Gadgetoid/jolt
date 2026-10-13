@@ -1,0 +1,21 @@
+mkdir -p /tmp/a && cd /tmp/a && printf 'alpha\\nbeta\\ngamma\\n' > words.txt && seq 1 300 > numbers.txt
+tar czf ../a.tgz words.txt numbers.txt && mkdir -p /tmp/b && cd /tmp/b && tar xzf ../a.tgz && cmp words.txt /tmp/a/words.txt && echo "tar ok"
+gzip -k numbers.txt && gunzip -c numbers.txt.gz | tail -1
+bzip2 -1 -k words.txt && bzcat words.txt.bz2 | rev | tr '\\n' ' '; echo
+echo hello | base64 | base64 -d
+printf 'abc' | od -An -tx1
+printf 'xyz' | xxd | cut -c11-14
+nl -ba words.txt | tail -1
+cal 1 2026 | head -1
+echo '2^20' | bc
+echo '6 7 * p' | dc
+du -s /tmp/b | cut -f2
+df / | tail -1 | cut -c1-6
+free | head -1 | cut -c1-30
+uptime | grep -c load
+ps | grep -c sh
+pstree | head -1
+cat /proc/self/status | head -1
+time true 2>&1 | head -1
+cd /
+exit 0

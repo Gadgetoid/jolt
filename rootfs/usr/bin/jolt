@@ -1,0 +1,95 @@
+#!/bin/sh
+usage() {
+    echo "usage: jolt COMMAND"
+    echo "  fs    full screen, hides the taskbar"
+    echo "  win   window, taskbar visible"
+    echo "  dm    dark mode"
+    echo "  lm    light mode"
+    echo "  font N  font height in pixels, 8-32 (default 16)"
+    echo "  theme classic|solarized  colour theme"
+    echo "  mount [CEPATH DIR]  map a CE folder into the tree, or list mounts"
+    echo "  umount DIR  remove a mount"
+    echo "  open FILE  open a file with its CE application"
+    echo "  battery  battery and power status"
+    echo "  shortcut [-s] NAME COMMAND  desktop shortcut (-s: Start menu) that runs COMMAND"
+    echo "  help  this help (also -h)"
+    echo "Shift+PgUp/PgDn or Shift+Up/Down scroll back through output."
+    echo "/dev/clipboard reads and writes the CE clipboard."
+    echo "Settings are remembered. Type 'exit' to close JoLT."
+}
+
+list_mounts() {
+    while read -r source target type rest; do
+        [ "$type" = cefs ] && printf '%s on %s\n' "$(printf '%b' "$source")" "$target"
+    done < /proc/mounts
+}
+
+battery() {
+    read -r driver bios flags ac status battery_flags percent minutes units < /proc/apm
+    case "$ac" in
+        0x01) power="AC power" ;;
+        0x00) power="battery" ;;
+        *) power="unknown power source" ;;
+    esac
+    case "$status" in
+        0x03) state=", charging" ;;
+        0x01) state=", low" ;;
+        0x02) state=", critical" ;;
+        *) state="" ;;
+    esac
+    if [ "$percent" = "-1%" ]; then percent="level unknown"; fi
+    remaining=""
+    if [ "$minutes" != "-1" ]; then remaining=", $((minutes / 60))h $((minutes % 60))m left"; fi
+    echo "$power, $percent$state$remaining"
+}
+
+osc() {
+    printf '\033]7770;%s\007' "$1"
+}
+
+case "$1" in
+    fs|full) osc fullscreen ;;
+    win|window) osc window ;;
+    dm|dark) osc dark ;;
+    lm|light) osc light ;;
+    font)
+        case "$2" in
+            ''|*[!0-9]*) usage >&2; exit 1 ;;
+        esac
+        if [ "$2" -lt 8 ] || [ "$2" -gt 32 ]; then usage >&2; exit 1; fi
+        osc "font=$2"
+        ;;
+    theme)
+        case "$2" in
+            classic|solarized) osc "theme=$2" ;;
+            *) usage >&2; exit 1 ;;
+        esac
+        ;;
+    mount)
+        if [ $# -eq 1 ]; then list_mounts; exit 0; fi
+        if [ $# -ne 3 ]; then usage >&2; exit 1; fi
+        mkdir -p "$3" && mount -t cefs "$2" "$3"
+        ;;
+    umount|unmount)
+        if [ $# -ne 2 ]; then usage >&2; exit 1; fi
+        umount "$2"
+        ;;
+    open)
+        if [ $# -ne 2 ] || [ ! -e "$2" ]; then usage >&2; exit 1; fi
+        osc "open=$(realpath "$2")"
+        ;;
+    battery) battery ;;
+    shortcut)
+        place=d
+        if [ "$2" = "-s" ]; then place=s; shift; fi
+        if [ $# -ne 3 ]; then usage >&2; exit 1; fi
+        case "$2" in
+            ''|*[\\/:*?\"\<\>\|\;]*) echo "jolt: shortcut names cannot contain \\ / : * ? \" < > | ;" >&2; exit 1 ;;
+        esac
+        osc "shortcut=$place;$2;$3"
+        if [ "$place" = s ]; then where="Start menu"; else where="desktop"; fi
+        echo "Shortcut '$2' added to the $where"
+        ;;
+    help|-h|--help) usage; exit 0 ;;
+    *) usage >&2; exit 1 ;;
+esac

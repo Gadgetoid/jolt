@@ -1,0 +1,16 @@
+jolt mount
+ls /mnt/docs | wc -l
+jolt mount '\\Windows' /mnt/win
+ls /mnt/win | grep -ci exe
+grep -c cefs /proc/mounts
+echo hello > /mnt/docs/jolt-test.txt; cat /mnt/docs/jolt-test.txt; rm /mnt/docs/jolt-test.txt
+cd /mnt/win && pwd && cd /
+jolt umount /mnt/win; jolt mount
+echo "clip from jolt" > /dev/clipboard; sleep 1
+cat /dev/clipboard
+printf 'line1\\nline2\\n' > /dev/clipboard; sleep 1; cat /dev/clipboard | wc -l
+echo more >> /dev/clipboard; sleep 1; tail -1 /dev/clipboard
+ls -l /dev/clipboard
+cat /proc/apm
+jolt battery
+exit 0

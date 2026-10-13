@@ -1,0 +1,8 @@
+--- a/arch/arm/reloc.h
++++ b/arch/arm/reloc.h
+@@ -29,4 +29,4 @@
+ #define TLSDESC_BACKWARDS 1
+ 
+ #define CRTJMP(pc,sp) __asm__ __volatile__( \
+-	"mov sp,%1 ; bx %0" : : "r"(pc), "r"(sp) : "memory" )
++	"mov sp,%1 ; mov pc,%0" : : "r"(pc), "r"(sp) : "memory" )

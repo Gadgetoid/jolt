@@ -1,0 +1,3 @@
+# CE folders mounted into the Linux tree by `mount -a` at login.
+# Use \040 for spaces. Type is always cefs.
+\My\040Documents /mnt/docs cefs defaults 0 0

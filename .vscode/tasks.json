@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "JoLT: build",
+			"type": "shell",
+			"command": "tools/build.sh",
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "JoLT: emulator QA",
+			"type": "shell",
+			"command": "tests/emulator.sh",
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}

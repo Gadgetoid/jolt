@@ -1,0 +1,3 @@
+nc -z -w 5 10.0.2.2 22; echo "port check $?"
+timeout 40 dbclient -y -T jolt@10.0.2.2 true; echo "ssh status $?"
+exit 0

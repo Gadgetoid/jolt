@@ -1,0 +1,2 @@
+echo in shell after hold
+exit 0

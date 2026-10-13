@@ -1,0 +1,11 @@
+jolt
+jolt -h; echo "help status $?"
+jolt help >/dev/null; echo "help status $?"
+jolt bogus 2>/dev/null; echo "bogus status $?"
+jolt dm
+jolt fs
+stty size
+jolt win
+jolt lm
+stty size
+exit 0

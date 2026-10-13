@@ -1,0 +1,13 @@
+mkdir -p /tmp/www && echo "served by busybox httpd" > /tmp/www/index.html
+httpd -p 8080 -h /tmp/www
+sleep 1
+wget -q -O - http://127.0.0.1:8080/index.html
+wget -q -O - http://localhost:8080/index.html | wc -c
+nslookup localhost 2>&1 | grep -c 127.0.0.1
+nc -l -p 9000 > /tmp/received.txt &
+sleep 1
+echo "through netcat" | nc 127.0.0.1 9000
+sleep 1
+cat /tmp/received.txt
+kill %1 2>/dev/null; killall httpd 2>/dev/null; pkill httpd 2>/dev/null; echo done
+exit 0

@@ -1,0 +1,4 @@
+time wget -O /tmp/e.html https://example.com/ 2>&1; echo "https $?"
+grep -o "<title>.*</title>" /tmp/e.html
+@wait 30000
+exit 0

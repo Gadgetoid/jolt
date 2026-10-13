@@ -1,0 +1,7 @@
+jolt font 12
+stty size
+jolt font 7
+echo "bad font $?"
+jolt font 16
+stty size
+exit 0

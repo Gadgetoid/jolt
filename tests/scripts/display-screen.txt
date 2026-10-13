@@ -1,0 +1,4 @@
+jolt dm
+jolt fs
+ls -l /
+vi /etc/profile

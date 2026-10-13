@@ -1,0 +1,16 @@
+sleep 4
+@wait 1500
+\x1a\c
+jobs
+fg
+echo "fg status $?"
+cat &
+sleep 1
+jobs
+kill -9 %1
+sleep 1
+sleep 3 &
+bg
+wait
+echo "background finished $?"
+exit 0

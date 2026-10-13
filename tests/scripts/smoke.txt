@@ -1,0 +1,3 @@
+echo hello from ash
+ls /
+exit 3

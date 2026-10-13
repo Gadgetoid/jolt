@@ -1,0 +1,19 @@
+echo one two three | wc -w
+echo alpha > /tmp/a.txt
+echo beta >> /tmp/a.txt
+cat /tmp/a.txt | grep beta
+x=$(echo sub); echo "got $x"
+for i in 1 2 3; do echo n$i; done | tail -1
+cd /tmp && pwd
+(cd /etc; pwd)
+pwd
+sleep 1 & wait; echo "waited $?"
+printf '#!/bin/sh\\necho script ran $1\\n' > /tmp/s.sh
+/tmp/s.sh argument
+echo first > /tmp/m1; echo second > /tmp/m2; mv /tmp/m1 /tmp/m2; cat /tmp/m2
+seq 1 200 | sort -rn | head -3 | tr '\\n' ' '; echo
+yes | head -2 | wc -l
+ls /bin | wc -l
+false || echo "status $?"
+cd /; ls
+exit 0

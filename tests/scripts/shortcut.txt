@@ -1,0 +1,11 @@
+jolt shortcut "JoLT Test" "echo hi; ssh -V"
+jolt shortcut -s "JoLT Menu" "top"
+jolt shortcut "bad/name" "true"; echo "bad $?"
+jolt mount / /mnt/ce
+@wait 500
+cat "/mnt/ce/Windows/Desktop/JoLT Test.lnk"; echo
+cat "/mnt/ce/Windows/Programs/JoLT Menu.lnk"; echo
+rm "/mnt/ce/Windows/Desktop/JoLT Test.lnk" "/mnt/ce/Windows/Programs/JoLT Menu.lnk"
+jolt umount /mnt/ce
+ssh -V 2>&1 | head -1
+exit 0

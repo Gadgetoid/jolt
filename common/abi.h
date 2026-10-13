@@ -1,0 +1,6 @@
+#pragma once
+
+#define JOLT_NOTE_NAME "JoLT"
+#define JOLT_NOTE_ABI 1
+#define JOLT_ABI_VERSION 1
+#define JOLT_ALLOW_UNMARKED "JOLT_ALLOW_UNMARKED=1"

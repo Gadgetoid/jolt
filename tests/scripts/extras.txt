@@ -1,0 +1,14 @@
+sleep 30 &
+pidof sleep | wc -w
+pgrep -l sleep | grep -c sleep
+killall sleep; sleep 1; echo "killall $?"
+timeout 1 sleep 5; echo "timeout status $?"
+factor 360
+seq 1 10 | shuf | sort -n | tail -1
+echo hello | sha512sum | cut -c1-8
+printf 'a\\r\\nb\\r\\n' > /tmp/dos.txt && dos2unix /tmp/dos.txt && od -c /tmp/dos.txt | head -1
+mkdir -p /tmp/t/x/y && tree /tmp/t | tail -1
+echo "nice $(nice -n 5 echo ok)"
+echo histmark42 >/dev/null
+grep -q histmark42 "$HISTFILE" && echo "history ok"
+exit 0

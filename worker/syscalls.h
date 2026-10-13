@@ -1,0 +1,136 @@
+#pragma once
+#include <windows.h>
+
+typedef LONG (*syscall_handler)(const DWORD *arguments);
+
+LONG sys_succeed(const DWORD *arguments);
+LONG sys_not_permitted(const DWORD *arguments);
+
+LONG sys_brk(const DWORD *arguments);
+LONG sys_mmap2(const DWORD *arguments);
+LONG sys_munmap(const DWORD *arguments);
+LONG sys_mprotect(const DWORD *arguments);
+LONG sys_mremap(const DWORD *arguments);
+
+LONG sys_read(const DWORD *arguments);
+LONG sys_write(const DWORD *arguments);
+LONG sys_pread64(const DWORD *arguments);
+LONG sys_pwrite64(const DWORD *arguments);
+LONG sys_readv(const DWORD *arguments);
+LONG sys_writev(const DWORD *arguments);
+LONG sys_open(const DWORD *arguments);
+LONG sys_creat(const DWORD *arguments);
+LONG sys_openat(const DWORD *arguments);
+LONG sys_close(const DWORD *arguments);
+LONG sys_dup(const DWORD *arguments);
+LONG sys_dup2(const DWORD *arguments);
+LONG sys_dup3(const DWORD *arguments);
+LONG sys_pipe(const DWORD *arguments);
+LONG sys_pipe2(const DWORD *arguments);
+LONG sys_fcntl(const DWORD *arguments);
+LONG sys_lseek(const DWORD *arguments);
+LONG sys_llseek(const DWORD *arguments);
+LONG sys_fsync(const DWORD *arguments);
+LONG sys_ftruncate(const DWORD *arguments);
+LONG sys_ftruncate64(const DWORD *arguments);
+LONG sys_fd_metadata(const DWORD *arguments);
+LONG sys_ioctl(const DWORD *arguments);
+
+LONG sys_poll(const DWORD *arguments);
+LONG sys_ppoll(const DWORD *arguments);
+LONG sys_ppoll_time64(const DWORD *arguments);
+LONG sys_newselect(const DWORD *arguments);
+LONG sys_pselect6(const DWORD *arguments);
+LONG sys_pselect6_time64(const DWORD *arguments);
+
+LONG sys_getdents64(const DWORD *arguments);
+LONG sys_statx(const DWORD *arguments);
+LONG sys_unlink(const DWORD *arguments);
+LONG sys_unlinkat(const DWORD *arguments);
+LONG sys_rmdir(const DWORD *arguments);
+LONG sys_mkdir(const DWORD *arguments);
+LONG sys_mkdirat(const DWORD *arguments);
+LONG sys_access(const DWORD *arguments);
+LONG sys_faccessat(const DWORD *arguments);
+LONG sys_chmod(const DWORD *arguments);
+LONG sys_fchmodat(const DWORD *arguments);
+LONG sys_chown(const DWORD *arguments);
+LONG sys_fchownat(const DWORD *arguments);
+LONG sys_truncate(const DWORD *arguments);
+LONG sys_truncate64(const DWORD *arguments);
+LONG sys_rename(const DWORD *arguments);
+LONG sys_renameat(const DWORD *arguments);
+LONG sys_chdir(const DWORD *arguments);
+LONG sys_fchdir(const DWORD *arguments);
+LONG sys_getcwd(const DWORD *arguments);
+LONG sys_readlink(const DWORD *arguments);
+LONG sys_readlinkat(const DWORD *arguments);
+LONG sys_utimensat(const DWORD *arguments);
+LONG sys_umask(const DWORD *arguments);
+LONG sys_mount(const DWORD *arguments);
+LONG sys_umount2(const DWORD *arguments);
+LONG sys_statfs64(const DWORD *arguments);
+LONG sys_fstatfs64(const DWORD *arguments);
+
+LONG sys_exit(const DWORD *arguments);
+LONG sys_fork(const DWORD *arguments);
+LONG sys_clone(const DWORD *arguments);
+LONG sys_execve(const DWORD *arguments);
+LONG sys_execveat(const DWORD *arguments);
+LONG sys_wait4(const DWORD *arguments);
+LONG sys_getpid(const DWORD *arguments);
+LONG sys_getppid(const DWORD *arguments);
+LONG sys_getpgid(const DWORD *arguments);
+LONG sys_getpgrp(const DWORD *arguments);
+LONG sys_getsid(const DWORD *arguments);
+LONG sys_setpgid(const DWORD *arguments);
+LONG sys_setsid(const DWORD *arguments);
+LONG sys_get_user_ids(const DWORD *arguments);
+
+LONG sys_rt_sigaction(const DWORD *arguments);
+LONG sys_rt_sigprocmask(const DWORD *arguments);
+LONG sys_rt_sigpending(const DWORD *arguments);
+LONG sys_rt_sigsuspend(const DWORD *arguments);
+LONG sys_rt_sigreturn(const DWORD *arguments);
+LONG sys_pause(const DWORD *arguments);
+LONG sys_kill(const DWORD *arguments);
+LONG sys_tkill(const DWORD *arguments);
+LONG sys_tgkill(const DWORD *arguments);
+
+LONG sys_clock_gettime(const DWORD *arguments);
+LONG sys_clock_gettime64(const DWORD *arguments);
+LONG sys_clock_getres(const DWORD *arguments);
+LONG sys_clock_getres_time64(const DWORD *arguments);
+LONG sys_nanosleep(const DWORD *arguments);
+LONG sys_clock_nanosleep(const DWORD *arguments);
+LONG sys_clock_nanosleep_time64(const DWORD *arguments);
+LONG sys_gettimeofday(const DWORD *arguments);
+LONG sys_times(const DWORD *arguments);
+LONG sys_getrusage(const DWORD *arguments);
+LONG sys_uname(const DWORD *arguments);
+LONG sys_sysinfo(const DWORD *arguments);
+LONG sys_ugetrlimit(const DWORD *arguments);
+LONG sys_prlimit64(const DWORD *arguments);
+LONG sys_getrandom(const DWORD *arguments);
+LONG sys_sched_yield(const DWORD *arguments);
+LONG sys_setitimer(const DWORD *arguments);
+LONG sys_getitimer(const DWORD *arguments);
+
+LONG sys_socket(const DWORD *arguments);
+LONG sys_socketpair(const DWORD *arguments);
+LONG sys_bind(const DWORD *arguments);
+LONG sys_connect(const DWORD *arguments);
+LONG sys_listen(const DWORD *arguments);
+LONG sys_accept(const DWORD *arguments);
+LONG sys_accept4(const DWORD *arguments);
+LONG sys_getsockname(const DWORD *arguments);
+LONG sys_getpeername(const DWORD *arguments);
+LONG sys_send(const DWORD *arguments);
+LONG sys_sendto(const DWORD *arguments);
+LONG sys_recv(const DWORD *arguments);
+LONG sys_recvfrom(const DWORD *arguments);
+LONG sys_sendmsg(const DWORD *arguments);
+LONG sys_recvmsg(const DWORD *arguments);
+LONG sys_shutdown(const DWORD *arguments);
+LONG sys_setsockopt(const DWORD *arguments);
+LONG sys_getsockopt(const DWORD *arguments);

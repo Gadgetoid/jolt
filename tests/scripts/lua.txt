@@ -1,0 +1,9 @@
+lua -e 'print("lua " .. _VERSION, 6 * 7, string.rep("ab", 3))'
+lua -e 'local t = {} for i = 1, 10000 do t[i] = i * i end print("sum", t[100] + #t)'
+lua -e 'local f = io.open("/tmp/l.txt", "w") f:write("written by lua\\n") f:close() print(io.open("/tmp/l.txt"):read("l"))'
+lua -e 'print("time", os.time() > 0, #os.date("%Y"))'
+printf '#!/usr/bin/lua\\nprint("script " .. arg[1])\\n' > /tmp/s.lua && chmod +x /tmp/s.lua && /tmp/s.lua argument
+cp /usr/bin/lua /tmp/unmarked && dd if=/tmp/unmarked bs=1 skip=192 count=4 2>/dev/null; echo
+printf 'XXXX' | dd of=/tmp/unmarked bs=1 seek=192 conv=notrunc 2>/dev/null; /tmp/unmarked -v; echo "unmarked status $?"
+JOLT_ALLOW_UNMARKED=1 /tmp/unmarked -v
+exit 0

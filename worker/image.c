@@ -7,8 +7,9 @@
 #include "files.h"
 #include "elf.h"
 #include "abi.h"
+#include "worker.h"
 
-#define IMAGE_FILE_LIMIT 0x200000UL
+#define IMAGE_FILE_LIMIT (IMAGE_LIMIT - GUEST_START)
 #define NOTE_ALIGNMENT 4
 #define REFUSAL_CAPACITY 384
 

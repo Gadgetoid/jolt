@@ -8,6 +8,8 @@ JoLT is not a Linux kernel or a VM. A small compatibility layer loads a statical
 
 Download a release `.zip`, copy its `JoLT` folder to the root of a CompactFlash card and run `\Storage Card\JoLT\JoLT-Term.exe`.
 
+The [User Guide & Manual](MANUAL.md) covers everything below in more detail, with screenshots.
+
 - `help` lists shell built-ins; `jolt help` lists display settings (`jolt fs`, `jolt dm`, `jolt font 12`, `jolt theme solarized`).
 - `jolt mount '\My Documents' /mnt/docs` maps a CE folder into the tree (`/etc/fstab` is mounted at login); `jolt open FILE` opens a file in its CE application; `jolt battery` shows power status; `/dev/clipboard` reads and writes the CE clipboard.
 - `JoLT-Term.exe -e "ssh user@host"` runs a command and closes when it exits (`--hold` drops to a shell instead); `jolt shortcut "Laptop" "ssh user@host"` puts one on the desktop (`-s` for the Start menu).

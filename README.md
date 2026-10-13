@@ -14,6 +14,7 @@ Download a release `.zip`, copy its `JoLT` folder to the root of a CompactFlash 
 - Programs built with the JoLT toolchain (apps/) carry an ABI note the loader checks; set `JOLT_ALLOW_UNMARKED=1` to try a static ARMv4 binary built elsewhere.
 - `/dev/ttyS0`-`/dev/ttyS3` are CE's `COM1:`-`COM4:` (COM1 is the serial cable, busy while PPP/ActiveSync uses it; COM3 is IrCOMM, COM4 raw IR). `microcom -s 115200 /dev/ttyS0` talks to whatever is on the cable.
 - `JoLT\root` is `/`. Ctrl-C, Ctrl-Z, `fg`, `bg` and `jobs` work. Shift+PgUp/PgDn scrolls back.
+- The Jornada has no function keys: Ctrl+1 to Ctrl+0 send F1 to F10, Ctrl+- and Ctrl+= send F11 and F12 (htop: Ctrl+0 quits). `jolt keys` shows the raw keyboard messages JoLT receives.
 - `exit` returns to the desktop.
 
 ## Building

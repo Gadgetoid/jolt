@@ -11,6 +11,7 @@ APP_CFLAGS="-Os -ffunction-sections -fdata-sections -fno-stack-protector"
 APP_LDFLAGS="-fuse-ld=lld -nostdlib -static -Wl,-T,$workspace/guest/guest.ld -Wl,--gc-sections -Wl,--build-id=none -Wl,-z,max-page-size=4096 -Wl,-u,_start -Wl,-u,__aeabi_read_tp -L$sysroot"
 APP_LIBS="-Wl,--start-group -ljoltcrt -lc -lm -ljoltrt -Wl,--end-group"
 mkdir -p "$output/bin" "$output/src" "$output/toolchain"
+export GIT_CEILING_DIRECTORIES="$output/src"
 APP_WRAPPER="$output/toolchain/jolt-cc"
 cat > "$APP_WRAPPER" <<WRAPPER
 #!/bin/sh

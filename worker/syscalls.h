@@ -72,6 +72,7 @@ LONG sys_eventfd(const DWORD *arguments);
 LONG sys_eventfd2(const DWORD *arguments);
 LONG sys_settimeofday(const DWORD *arguments);
 LONG sys_clock_settime(const DWORD *arguments);
+LONG sys_adjtimex(const DWORD *arguments);
 LONG sys_umount2(const DWORD *arguments);
 LONG sys_statfs64(const DWORD *arguments);
 LONG sys_fstatfs64(const DWORD *arguments);

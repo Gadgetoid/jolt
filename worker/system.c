@@ -185,6 +185,11 @@ LONG sys_clock_settime(const DWORD *arguments) {
     return set_unix_time((ULONGLONG)value.seconds, (DWORD)value.nanoseconds);
 }
 
+LONG sys_adjtimex(const DWORD *arguments) {
+    (void)arguments;
+    return LINUX_TIME_OK;
+}
+
 LONG sys_times(const DWORD *arguments) {
     LONG ticks = (LONG)(GetTickCount() / (MILLISECONDS_PER_SECOND / CLOCK_TICKS_PER_SECOND));
     if (arguments[0]) {

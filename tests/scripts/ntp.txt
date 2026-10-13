@@ -1,0 +1,4 @@
+date -s "2000-01-01 00:00:00" > /dev/null; date +%Y
+timeout 30 ntpd -q -n; echo "ntpd status $?"
+date +%Y
+exit 0

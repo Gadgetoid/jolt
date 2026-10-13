@@ -24,7 +24,7 @@ enum linux_syscall {
     SYS_setresuid32 = 208, SYS_getresuid32 = 209, SYS_setresgid32 = 210, SYS_getresgid32 = 211,
     SYS_chown32 = 212, SYS_setuid32 = 213, SYS_setgid32 = 214, SYS_getdents64 = 217, SYS_madvise = 220,
     SYS_fcntl64 = 221, SYS_gettid = 224, SYS_tkill = 238, SYS_exit_group = 248, SYS_set_tid_address = 256,
-    SYS_clock_settime = 262, SYS_clock_gettime = 263, SYS_clock_getres = 264, SYS_clock_nanosleep = 265, SYS_tgkill = 268,
+    SYS_clock_settime = 262, SYS_adjtimex = 124, SYS_clock_adjtime = 372, SYS_clock_adjtime64 = 405, SYS_clock_gettime = 263, SYS_clock_getres = 264, SYS_clock_nanosleep = 265, SYS_tgkill = 268,
     SYS_openat = 322, SYS_mkdirat = 323, SYS_fchownat = 325, SYS_unlinkat = 328, SYS_renameat = 329,
     SYS_linkat = 330, SYS_symlinkat = 331, SYS_readlinkat = 332, SYS_fchmodat = 333, SYS_faccessat = 334,
     SYS_pselect6 = 335, SYS_ppoll = 336, SYS_set_robust_list = 338, SYS_utimensat = 348, SYS_dup3 = 358,
@@ -230,6 +230,7 @@ enum linux_control_character {
 #define LINUX_IPPROTO_ICMP 1
 #define LINUX_IPPROTO_TCP 6
 #define LINUX_IP_TTL 2
+#define LINUX_TIME_OK 0
 #define LINUX_SOCK_RAW 3
 #define LINUX_TCP_NODELAY 1
 #define LINUX_MSG_OOB 1

@@ -121,6 +121,9 @@ static LRESULT CALLBACK window_procedure(HWND window, UINT message, WPARAM wpara
     case WM_SYSCHAR:
         if (keyboard_system_character()) return 0;
         break;
+    case WM_KILLFOCUS:
+        keyboard_focus_lost();
+        break;
     case WM_VSCROLL:
         display_scrollbar(wparam);
         return 0;

@@ -126,8 +126,16 @@ void keyboard_character(WPARAM character) {
     tty_input(character == ASCII_BACKSPACE ? ASCII_DELETE : (char)character);
 }
 
+BOOL AllKeys(BOOL all_keys);
+
+static void stop_log(void) {
+    key_log_remaining = 0;
+    AllKeys(FALSE);
+}
+
 void keyboard_start_log(void) {
     key_log_remaining = KEY_LOG_EVENTS;
+    AllKeys(TRUE);
     const char *notice = "\r\njolt: logging the next 20 keyboard messages\r\n";
     display_output(notice, (DWORD)strlen(notice));
 }
@@ -153,5 +161,9 @@ void keyboard_log(UINT message, WPARAM wparam, LPARAM lparam) {
         (unsigned long)wparam, (unsigned long)lparam, GetKeyState(VK_MENU) < 0, GetKeyState(VK_CONTROL) < 0,
         GetKeyState(VK_SHIFT) < 0);
     if (length > 0) display_output(text, (DWORD)length);
-    key_log_remaining--;
+    if (--key_log_remaining == 0) stop_log();
+}
+
+void keyboard_focus_lost(void) {
+    if (key_log_remaining) stop_log();
 }

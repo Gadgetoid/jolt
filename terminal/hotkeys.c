@@ -15,21 +15,22 @@
 struct button {
     DWORD key;
     const char *name;
+    int passes_through;
 };
 
 static const struct button buttons[] = {
-    { 0xc1, "1" }, { 0xc2, "2" }, { 0xc3, "3" }, { 0xc4, "4" }, { 0xc5, "5" }, { 0xc6, "6" },
-    { 0xc7, "7" }, { 0xc8, "8" }, { 0xc9, "9" }, { 0xca, "10" }, { 0xcb, "11" },
-    { 0xd0, "player" }, { 0xd1, "volume-up" }, { 0xd2, "volume-down" }, { 0xd3, "play-pause" },
+    { 0xc1, "1", 0 }, { 0xc2, "2", 0 }, { 0xc3, "3", 0 }, { 0xc4, "4", 0 }, { 0xc5, "5", 0 }, { 0xc6, "6", 0 },
+    { 0xc7, "7", 0 }, { 0xc8, "8", 0 }, { 0xc9, "9", 0 }, { 0xca, "10", 0 }, { 0xcb, "11", 0 },
+    { 0xd0, "player", 1 }, { 0xd1, "volume-up", 1 }, { 0xd2, "volume-down", 1 }, { 0xd3, "play-pause", 1 },
 };
 
 int hotkeys_engaged(const struct display_settings *settings) {
     return settings->hotkeys == HOTKEYS_ALWAYS || (settings->hotkeys == HOTKEYS_FULLSCREEN && settings->fullscreen);
 }
 
-static const char *button_name(WPARAM key) {
+static const struct button *find_button(WPARAM key) {
     for (size_t index = 0; index < sizeof buttons / sizeof buttons[0]; index++)
-        if (buttons[index].key == key) return buttons[index].name;
+        if (buttons[index].key == key) return &buttons[index];
     return NULL;
 }
 
@@ -87,13 +88,13 @@ static void launch_default(WPARAM key) {
 }
 
 int hotkeys_press(WPARAM key) {
-    const char *name = button_name(key);
-    if (!name) return 0;
+    const struct button *button = find_button(key);
+    if (!button) return 0;
     static char text[HOTKEYS_CAPACITY], command[HOTKEYS_CAPACITY];
-    if (read_hotkeys(text) && find_command(text, name, command)) {
+    if (read_hotkeys(text) && find_command(text, button->name, command)) {
         tty_type(command, (DWORD)strlen(command));
         tty_type("\r", 1);
-    } else {
+    } else if (button->passes_through) {
         launch_default(key);
     }
     return 1;

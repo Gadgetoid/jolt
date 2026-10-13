@@ -1,5 +1,6 @@
 # Commands for the HP hot keys, typed into JoLT with Enter.
-# One per line: HOTKEY COMMAND. Hot keys without a line keep their usual action.
+# One per line: HOTKEY COMMAND. While JoLT has the hot keys, unassigned ones
+# do nothing; unassigned media keys keep their usual action.
 #  1 Internet Explorer   5 Tasks          9 Pocket Access
 #  2 Inbox               6 Calendar      10 Pocket Excel
 #  3 Voice Recorder      7 HP Viewer     11 Pocket Word

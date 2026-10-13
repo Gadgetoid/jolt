@@ -14,6 +14,7 @@ usage() {
     echo "  shortcut [-s] NAME COMMAND  desktop shortcut (-s: Start menu) that runs COMMAND"
     echo "  help  this help (also -h)"
     echo "Shift+PgUp/PgDn or Shift+Up/Down scroll back through output."
+    echo "Alt+1..Alt+0 send F1..F10, Alt+- and Alt+= send F11 and F12."
     echo "/dev/clipboard reads and writes the CE clipboard."
     echo "Settings are remembered. Type 'exit' to close JoLT."
 }

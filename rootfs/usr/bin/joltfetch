@@ -1,80 +1,63 @@
 #!/bin/sh
 green='\033[1;32m'
-dark='\033[0;32m'
 bold='\033[1m'
 reset='\033[0m'
 
-field() {
-    while IFS= read -r line; do
-        case "$line" in
-            "$1: "*) printf '%s' "${line#"$1: "}"; return ;;
-        esac
-    done < /proc/jolt
-}
-
-meminfo() {
-    while read -r name value unit; do
-        [ "$name" = "$1:" ] && { printf '%s' "$value"; return; }
-    done < /proc/meminfo
-}
-
-cpuinfo() {
-    while IFS= read -r line; do
-        case "$line" in
-            "$1"*) printf '%s' "${line#*: }"; return ;;
-        esac
-    done < /proc/cpuinfo
-}
-
-duration() {
-    seconds=$1
-    days=$((seconds / 86400)); hours=$((seconds % 86400 / 3600)); minutes=$((seconds % 3600 / 60))
-    text=""
-    [ "$days" -gt 0 ] && text="${days}d "
-    [ "$hours" -gt 0 ] && text="${text}${hours}h "
-    printf '%s' "${text}${minutes}m"
-}
-
-count_files() {
-    count=0
-    for file in "$1"/*; do [ -e "$file" ] && count=$((count + 1)); done
-    printf '%s' "$count"
-}
-
-host_model() {
-    oem=$(field oem)
-    case "$oem" in
-        *,*) maker=${oem%%,*}; rest=${oem#*,}; rest=${rest# }; printf '%s %s' "$maker" "${rest%%,*}" ;;
-        *) printf '%s' "$oem" ;;
+while IFS= read -r line; do
+    value=${line#*: }
+    case "$line" in
+        "version: "*) version=$value ;;
+        "ce_version: "*) ce_version=$value ;;
+        "ce_build: "*) ce_build=$value ;;
+        "oem: "*) oem=$value ;;
+        "device: "*) device=$value ;;
+        "owner: "*) owner=$value ;;
+        "display: "*) display=$value ;;
+        "card_kb: "*) card_kb=$value ;;
+        "card_free_kb: "*) card_free_kb=$value ;;
+        "terminal: "*) terminal=$value ;;
     esac
-}
+done < /proc/jolt
+
+while read -r name value unit; do
+    case "$name" in
+        MemTotal:) memory_total=$value ;;
+        MemAvailable:) memory_available=$value ;;
+    esac
+done < /proc/meminfo
+
+while IFS= read -r line; do
+    case "$line" in
+        Processor*) processor=${line#*: } ;;
+        BogoMIPS*) bogomips=${line#*: } ;;
+    esac
+done < /proc/cpuinfo
 
 read -r uptime rest < /proc/uptime
-total=$(meminfo MemTotal)
-available=$(meminfo MemAvailable)
 read -r _ _ _ ac _ _ percent _ < /proc/apm
+
+seconds=${uptime%.*}
+days=$((seconds / 86400)); hours=$((seconds % 86400 / 3600)); minutes=$((seconds % 3600 / 60))
+uptime_text="${minutes}m"
+[ "$hours" -gt 0 ] && uptime_text="${hours}h $uptime_text"
+[ "$days" -gt 0 ] && uptime_text="${days}d $uptime_text"
+
 case "$ac" in 0x01) power="AC" ;; 0x00) power="battery" ;; *) power="unknown" ;; esac
 [ "$percent" = "-1%" ] && percent="?"
-set -- $(df -k / | tail -1)
-storage_used=$(($3 / 1024)); storage_total=$(($2 / 1024))
-rows_columns=$(stty size 2>/dev/null)
-display=$(field display)
-user=$(field owner)
-[ -n "$user" ] || user=${USER:-root}
-host=$(field device)
-[ -n "$host" ] || host=$(hostname)
 
-title="$user@$host"
-underline=$(printf '%s' "$title" | sed 's/./-/g')
+case "$oem" in
+    *,*) maker=${oem%%,*}; model=${oem#*,}; model=${model# }; host="$maker ${model%%,*}" ;;
+    *) host=$oem ;;
+esac
 
-logo_1='                  _   _______'
-logo_2=' _______   ___   | | |__   __|'
-logo_3='|__    /  / _ \  | |    | |'
-logo_4='   /  /_ | (_) | | |__  | |'
-logo_5='  /_  _/  \___/  |____| |_|'
-logo_6='    / /'
-logo_7='   //'
-logo_8='  /'
+applets=0
+for file in /bin/*; do applets=$((applets + 1)); done
+programs=0
+for file in /usr/bin/*; do programs=$((programs + 1)); done
+
+user=${owner:-${USER:-root}}
+title="$user@${device:-jornada}"
+underline=${title//?/-}
 
 row() {
     printf "$green%-31s$reset" "$1"
@@ -82,20 +65,20 @@ row() {
     printf '\n'
 }
 
-printf "$green%-31s$reset$green$bold%s$reset\n" "$logo_1" "$title"
-printf "$green%-31s$reset%s\n" "$logo_2" "$underline"
-row "$logo_3" "OS" "JoLT $(field version) on Windows CE $(field ce_version) build $(field ce_build)"
-row "$logo_4" "Host" "$(host_model)"
-row "$logo_5" "Kernel" "$(uname -m) $(uname -r)"
-row "$logo_6" "Uptime" "$(duration "${uptime%.*}")"
-row "$logo_7" "Packages" "$(count_files /bin) applets, $(count_files /usr/bin) programs"
-row "$logo_8" "Shell" "ash (BusyBox)"
-row "" "Terminal" "JoLT-Term ${rows_columns#* }x${rows_columns% *}, $TERM"
-row "" "Display" "${display%x*} at ${display##*x}-bit"
-row "" "CPU" "$(cpuinfo Processor) ($(cpuinfo BogoMIPS) BogoMIPS)"
-row "" "Memory" "$(((total - available) / 1024)) MiB / $((total / 1024)) MiB"
-row "" "Storage" "$storage_used MiB / $storage_total MiB"
-row "" "Power" "$power, $percent"
+printf "$green%-31s$bold%s$reset\n" '                  _   _______' "$title"
+printf "$green%-31s$reset%s\n" ' _______   ___   | | |__   __|' "$underline"
+row '|__    /  / _ \  | |    | |' "OS" "JoLT $version on Windows CE $ce_version build $ce_build"
+row '   /  /_ | (_) | | |__  | |' "Host" "$host"
+row '  /_  _/  \___/  |____| |_|' "Kernel" "armv4l $version-jolt"
+row '    / /' "Uptime" "$uptime_text"
+row '   //' "Packages" "$applets applets, $programs programs"
+row '  /' "Shell" "ash (BusyBox)"
+row '' "Terminal" "JoLT-Term $terminal, $TERM"
+row '' "Display" "${display%x*} at ${display##*x}-bit"
+row '' "CPU" "$processor ($bogomips BogoMIPS)"
+row '' "Memory" "$(((memory_total - memory_available) / 1024)) MiB / $((memory_total / 1024)) MiB"
+row '' "Storage" "$(((card_kb - card_free_kb) / 1024)) MiB / $((card_kb / 1024)) MiB"
+row '' "Power" "$power, $percent"
 printf '%31s' ''
 for colour in 0 1 2 3 4 5 6 7; do printf '\033[4%sm   ' "$colour"; done
 printf "$reset\n"

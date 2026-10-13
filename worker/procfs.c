@@ -6,6 +6,7 @@
 #include "kernel.h"
 #include "linux.h"
 #include "text.h"
+#include "files.h"
 
 #define PROC_ROOT "/proc"
 #define SELF_LINK "self"
@@ -337,15 +338,22 @@ static LONG render_jolt(char *buffer, DWORD capacity) {
     system_parameter_text(SPI_GETPLATFORMTYPE, platform);
     registry_text(HKEY_LOCAL_MACHINE, L"Ident", L"Name", HOST_TEXT_CAPACITY, device);
     registry_text(HKEY_CURRENT_USER, L"ControlPanel\\Owner", L"Owner", OWNER_NAME_LENGTH, owner);
+    struct linux_statfs64 card;
+    memset(&card, 0, sizeof card);
+    jolt_file_statfs(&card);
+    DWORD card_total_kb = (DWORD)(card.blocks * card.block_size / 1024);
+    DWORD card_free_kb = (DWORD)(card.available_blocks * card.block_size / 1024);
     HDC screen = GetDC(NULL);
     int depth = screen ? GetDeviceCaps(screen, BITSPIXEL) * GetDeviceCaps(screen, PLANES) : 0;
     if (screen) ReleaseDC(NULL, screen);
     return snprintf(buffer, capacity,
         "version: %s\nce_version: %lu.%02lu\nce_build: %lu\noem: %s\nplatform: %s\ndevice: %s\nowner: %s\n"
-        "display: %dx%dx%d\nstore_kb: %lu\nstore_free_kb: %lu\n",
+        "display: %dx%dx%d\nstore_kb: %lu\nstore_free_kb: %lu\ncard_kb: %lu\ncard_free_kb: %lu\n"
+        "terminal: %ux%u\n",
         JOLT_VERSION, version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber, oem, platform,
         device, owner, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), depth,
-        store.dwStoreSize / 1024, store.dwFreeSize / 1024);
+        store.dwStoreSize / 1024, store.dwFreeSize / 1024, card_total_kb, card_free_kb,
+        kernel()->columns, kernel()->rows);
 }
 
 static LONG render_system(enum proc_file file, char *buffer, DWORD capacity) {

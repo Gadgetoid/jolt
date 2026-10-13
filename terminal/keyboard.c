@@ -28,6 +28,27 @@ static const struct key_mapping key_mappings[] = {
     { VK_NEXT, VTERM_KEY_PAGEDOWN },
 };
 
+#define FUNCTION_KEYS 12
+#define KEY_HYPHEN 0xbd
+#define KEY_EQUAL 0xbb
+#define TENTH_FUNCTION_KEY 10
+#define ELEVENTH_FUNCTION_KEY 11
+#define TWELFTH_FUNCTION_KEY 12
+
+static int swallow_system_character;
+
+static int alternate_function_number(WPARAM key) {
+    if (key >= '1' && key <= '9') return (int)(key - '0');
+    if (key == '0') return TENTH_FUNCTION_KEY;
+    if (key == KEY_HYPHEN) return ELEVENTH_FUNCTION_KEY;
+    if (key == KEY_EQUAL) return TWELFTH_FUNCTION_KEY;
+    return 0;
+}
+
+static int function_number(WPARAM key) {
+    return key >= VK_F1 && key < VK_F1 + FUNCTION_KEYS ? (int)(key - VK_F1) + 1 : 0;
+}
+
 static VTermModifier current_modifiers(void) {
     int modifiers = VTERM_MOD_NONE;
     if (GetKeyState(VK_SHIFT) < 0) modifiers |= VTERM_MOD_SHIFT;
@@ -59,11 +80,31 @@ void keyboard_key_down(WPARAM key) {
     }
     if (scrollback_key(key)) return;
     if (!is_modifier(key)) display_scroll_to(0);
+    int function = function_number(key);
+    if (function) {
+        display_key(VTERM_KEY_FUNCTION(function), current_modifiers());
+        return;
+    }
     for (size_t index = 0; index < sizeof key_mappings / sizeof key_mappings[0]; index++) {
         if (key_mappings[index].key != key) continue;
         display_key(key_mappings[index].terminal_key, current_modifiers());
         return;
     }
+}
+
+int keyboard_system_key(WPARAM key) {
+    int function = alternate_function_number(key);
+    if (session.finished || !function) return 0;
+    display_scroll_to(0);
+    display_key(VTERM_KEY_FUNCTION(function), VTERM_MOD_NONE);
+    swallow_system_character = 1;
+    return 1;
+}
+
+int keyboard_system_character(void) {
+    int swallowed = swallow_system_character;
+    swallow_system_character = 0;
+    return swallowed;
 }
 
 void keyboard_character(WPARAM character) {

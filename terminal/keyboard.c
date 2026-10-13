@@ -91,7 +91,8 @@ void keyboard_key_down(WPARAM key) {
         display_key(VTERM_KEY_FUNCTION(function), current_modifiers());
         return;
     }
-    function = GetKeyState(VK_MENU) < 0 ? alternate_function_number(key) : 0;
+    int chorded = GetKeyState(VK_CONTROL) < 0 || GetKeyState(VK_MENU) < 0;
+    function = chorded ? alternate_function_number(key) : 0;
     if (function) {
         MSG pending;
         display_key(VTERM_KEY_FUNCTION(function), VTERM_MOD_NONE);

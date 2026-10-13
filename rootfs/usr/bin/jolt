@@ -15,7 +15,7 @@ usage() {
     echo "  keys  show the next 20 keyboard messages JoLT receives"
     echo "  help  this help (also -h)"
     echo "Shift+PgUp/PgDn or Shift+Up/Down scroll back through output."
-    echo "Alt+1..Alt+0 send F1..F10, Alt+- and Alt+= send F11 and F12."
+    echo "Ctrl+1..Ctrl+0 send F1..F10, Ctrl+- and Ctrl+= send F11 and F12."
     echo "/dev/clipboard reads and writes the CE clipboard."
     echo "Settings are remembered. Type 'exit' to close JoLT."
 }

@@ -199,6 +199,34 @@ static DWORD find_mapping_space(DWORD size) {
     return candidate;
 }
 
+static int is_mapping(const struct guest_range *range) {
+    return range->start >= MMAP_START && range->start < GATE_PAGE && range->flags == (RANGE_READ | RANGE_WRITE);
+}
+
+static int add_mapping(DWORD start, DWORD end) {
+    int before = -1, after = -1;
+    for (DWORD index = 0; index < state.range_count; index++) {
+        const struct guest_range *range = &state.ranges[index];
+        if (!is_mapping(range)) continue;
+        if (range->end == start) before = (int)index;
+        if (range->start == end) after = (int)index;
+    }
+    if (before >= 0 && after >= 0) {
+        state.ranges[before].end = state.ranges[after].end;
+        remove_range((DWORD)after);
+        return 1;
+    }
+    if (before >= 0) {
+        state.ranges[before].end = end;
+        return 1;
+    }
+    if (after >= 0) {
+        state.ranges[after].start = start;
+        return 1;
+    }
+    return add_range(start, end - start, RANGE_READ | RANGE_WRITE);
+}
+
 LONG sys_mmap2(const DWORD *arguments) {
     DWORD length = arguments[1], protection = arguments[2], flags = arguments[3], fd = arguments[4];
     if ((flags & LINUX_MAP_FIXED) || !(flags & LINUX_MAP_ANONYMOUS) || fd != 0xffffffffUL) return error(LINUX_ENODEV);
@@ -207,7 +235,7 @@ LONG sys_mmap2(const DWORD *arguments) {
     if (!size || size > GATE_PAGE - MMAP_START) return error(LINUX_ENOMEM);
     DWORD address = find_mapping_space(size);
     if (!address || !commit_pages(address, size)) return error(LINUX_ENOMEM);
-    if (!add_range(address, size, RANGE_READ | RANGE_WRITE)) {
+    if (!add_mapping(address, address + size)) {
         decommit_pages(address, address + size);
         return error(LINUX_ENOMEM);
     }

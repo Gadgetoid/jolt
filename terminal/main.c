@@ -11,6 +11,7 @@
 #include "tty.h"
 #include "sound.h"
 #include "desktop.h"
+#include "hotkeys.h"
 #include "text.h"
 #include "kernel.h"
 #include "guest-manifest.h"
@@ -77,6 +78,7 @@ static void on_timer(void) {
 }
 
 static void on_destroy(void) {
+    keyboard_set_active(0);
     KillTimer(session.window, TIMER_ID);
     display_restore_taskbar();
     if (!session.finished) {
@@ -121,8 +123,8 @@ static LRESULT CALLBACK window_procedure(HWND window, UINT message, WPARAM wpara
     case WM_SYSCHAR:
         if (keyboard_system_character()) return 0;
         break;
-    case WM_KILLFOCUS:
-        keyboard_focus_lost();
+    case WM_ACTIVATE:
+        keyboard_set_active(LOWORD(wparam) != WA_INACTIVE);
         break;
     case WM_VSCROLL:
         display_scrollbar(wparam);
@@ -142,6 +144,7 @@ static void run_command(const char *command) {
     else if (!strncmp(command, "shortcut=", strlen("shortcut="))) desktop_shortcut(command + strlen("shortcut="));
     else if (!strcmp(command, "keys")) keyboard_start_log();
     else settings_command(command);
+    keyboard_set_hotkeys(hotkeys_engaged(settings_current()));
 }
 
 static int locate_folder(void) {
@@ -281,6 +284,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPWSTR command_line, 
     jolt.kernel->window = (DWORD)session.window;
     SetForegroundWindow(session.window);
     SetFocus(session.window);
+    keyboard_set_hotkeys(hotkeys_engaged(&settings));
     if (!display_create(session.window, &settings, run_command)) {
         DestroyWindow(session.window);
         return 1;

@@ -12,6 +12,7 @@ usage() {
     echo "  open FILE  open a file with its CE application"
     echo "  battery  battery and power status"
     echo "  shortcut [-s] NAME COMMAND  desktop shortcut (-s: Start menu) that runs COMMAND"
+    echo "  hotkeys off|fullscreen|always  when HP hot keys run commands from /etc/hotkeys"
     echo "  keys  show the next 20 keyboard messages JoLT receives"
     echo "  help  this help (also -h)"
     echo "Shift+PgUp/PgDn or Shift+Up/Down scroll back through output."
@@ -82,6 +83,12 @@ case "$1" in
         ;;
     battery) battery ;;
     keys) osc keys ;;
+    hotkeys)
+        case "$2" in
+            off|fullscreen|always) osc "hotkeys=$2" ;;
+            *) usage >&2; exit 1 ;;
+        esac
+        ;;
     shortcut)
         place=d
         if [ "$2" = "-s" ]; then place=s; shift; fi

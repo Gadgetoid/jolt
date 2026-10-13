@@ -11,7 +11,8 @@
 #define FONT_MAXIMUM 32
 #define FONT_DEFAULT 16
 
-static struct display_settings current = { 0, 0, FONT_DEFAULT, THEME_CLASSIC };
+static struct display_settings current = { 0, 0, FONT_DEFAULT, THEME_CLASSIC, HOTKEYS_FULLSCREEN };
+static const char *const hotkey_modes[] = { "off", "fullscreen", "always" };
 
 const struct display_settings *settings_current(void) {
     return &current;
@@ -26,10 +27,21 @@ static const char *value_of(const char *text, const char *key) {
     return found ? found + strlen(key) : NULL;
 }
 
+static int parse_hotkey_mode(const char *text, enum hotkey_mode *mode) {
+    for (int index = 0; index < (int)(sizeof hotkey_modes / sizeof hotkey_modes[0]); index++) {
+        size_t length = strlen(hotkey_modes[index]);
+        if (!strncmp(text, hotkey_modes[index], length) && (!text[length] || text[length] == '\r' || text[length] == '\n')) {
+            *mode = (enum hotkey_mode)index;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void save(void) {
     char text[SETTINGS_CAPACITY];
-    int length = snprintf(text, sizeof text, "fullscreen=%d\r\ndark=%d\r\nfont=%d\r\ntheme=%s\r\n",
-        current.fullscreen, current.dark, current.font_height, theme_label(current.theme));
+    int length = snprintf(text, sizeof text, "fullscreen=%d\r\ndark=%d\r\nfont=%d\r\ntheme=%s\r\nhotkeys=%s\r\n",
+        current.fullscreen, current.dark, current.font_height, theme_label(current.theme), hotkey_modes[current.hotkeys]);
     if (length > 0) session_write_file(SETTINGS_FILE, text, (DWORD)length, NULL, 0);
 }
 
@@ -47,6 +59,8 @@ void settings_load(struct display_settings *settings) {
         current.dark = strstr(text, "dark=1") != NULL;
         const char *font = value_of(text, "font=");
         if (font && valid_font(atoi(font))) current.font_height = atoi(font);
+        const char *hotkeys = value_of(text, "hotkeys=");
+        if (hotkeys) parse_hotkey_mode(hotkeys, &current.hotkeys);
         const char *theme = value_of(text, "theme=");
         if (theme) {
             char name[16];
@@ -68,6 +82,7 @@ static int apply_command(const char *command) {
     else if (!strcmp(command, "light")) current.dark = 0;
     else if (!strncmp(command, "font=", 5) && valid_font(atoi(command + 5))) current.font_height = atoi(command + 5);
     else if (!strncmp(command, "theme=", 6)) return theme_parse(command + 6, &current.theme);
+    else if (!strncmp(command, "hotkeys=", 8)) return parse_hotkey_mode(command + 8, &current.hotkeys);
     else return 0;
     return 1;
 }

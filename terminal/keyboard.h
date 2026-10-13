@@ -7,4 +7,5 @@ int keyboard_system_key(WPARAM key);
 int keyboard_system_character(void);
 void keyboard_start_log(void);
 void keyboard_log(UINT message, WPARAM wparam, LPARAM lparam);
-void keyboard_focus_lost(void);
+void keyboard_set_active(int active);
+void keyboard_set_hotkeys(int wanted);

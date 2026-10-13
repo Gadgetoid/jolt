@@ -5,6 +5,7 @@
 #include "display.h"
 #include "session.h"
 #include "tty.h"
+#include "hotkeys.h"
 
 #define ASCII_ESCAPE 27
 #define ASCII_BACKSPACE 8
@@ -84,6 +85,8 @@ void keyboard_key_down(WPARAM key) {
         if (key == VK_ESCAPE) display_close();
         return;
     }
+    if (key == VK_LWIN) return;
+    if (hotkeys_press(key)) return;
     if (scrollback_key(key)) return;
     if (!is_modifier(key)) display_scroll_to(0);
     int function = function_number(key);
@@ -128,14 +131,32 @@ void keyboard_character(WPARAM character) {
 
 BOOL AllKeys(BOOL all_keys);
 
+static int window_active = 1;
+static int hotkeys_wanted;
+
+static void apply_capture(void) {
+    AllKeys(window_active && (key_log_remaining || hotkeys_wanted));
+}
+
 static void stop_log(void) {
     key_log_remaining = 0;
-    AllKeys(FALSE);
+    apply_capture();
+}
+
+void keyboard_set_active(int active) {
+    window_active = active;
+    if (!active) key_log_remaining = 0;
+    apply_capture();
+}
+
+void keyboard_set_hotkeys(int wanted) {
+    hotkeys_wanted = wanted;
+    apply_capture();
 }
 
 void keyboard_start_log(void) {
     key_log_remaining = KEY_LOG_EVENTS;
-    AllKeys(TRUE);
+    apply_capture();
     const char *notice = "\r\njolt: logging the next 20 keyboard messages\r\n";
     display_output(notice, (DWORD)strlen(notice));
 }
@@ -164,6 +185,3 @@ void keyboard_log(UINT message, WPARAM wparam, LPARAM lparam) {
     if (--key_log_remaining == 0) stop_log();
 }
 
-void keyboard_focus_lost(void) {
-    if (key_log_remaining) stop_log();
-}

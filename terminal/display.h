@@ -3,11 +3,14 @@
 #include <vterm.h>
 #include "theme.h"
 
+enum hotkey_mode { HOTKEYS_OFF, HOTKEYS_FULLSCREEN, HOTKEYS_ALWAYS };
+
 struct display_settings {
     int fullscreen;
     int dark;
     int font_height;
     enum theme_name theme;
+    enum hotkey_mode hotkeys;
 };
 
 typedef void (*display_command_handler)(const char *command);

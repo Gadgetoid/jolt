@@ -1,4 +1,6 @@
 #include <windows.h>
+#include <stdio.h>
+#include <string.h>
 #include "keyboard.h"
 #include "display.h"
 #include "session.h"
@@ -35,7 +37,11 @@ static const struct key_mapping key_mappings[] = {
 #define ELEVENTH_FUNCTION_KEY 11
 #define TWELFTH_FUNCTION_KEY 12
 
+#define KEY_LOG_EVENTS 20
+#define KEY_LOG_CAPACITY 96
+
 static int swallow_system_character;
+static int key_log_remaining;
 
 static int alternate_function_number(WPARAM key) {
     if (key >= '1' && key <= '9') return (int)(key - '0');
@@ -85,6 +91,13 @@ void keyboard_key_down(WPARAM key) {
         display_key(VTERM_KEY_FUNCTION(function), current_modifiers());
         return;
     }
+    function = GetKeyState(VK_MENU) < 0 ? alternate_function_number(key) : 0;
+    if (function) {
+        MSG pending;
+        display_key(VTERM_KEY_FUNCTION(function), VTERM_MOD_NONE);
+        while (PeekMessageW(&pending, session.window, WM_CHAR, WM_CHAR, PM_REMOVE)) {}
+        return;
+    }
     for (size_t index = 0; index < sizeof key_mappings / sizeof key_mappings[0]; index++) {
         if (key_mappings[index].key != key) continue;
         display_key(key_mappings[index].terminal_key, current_modifiers());
@@ -110,4 +123,34 @@ int keyboard_system_character(void) {
 void keyboard_character(WPARAM character) {
     if (session.finished || !character || character >= ASCII_LIMIT || character == ASCII_ESCAPE) return;
     tty_input(character == ASCII_BACKSPACE ? ASCII_DELETE : (char)character);
+}
+
+void keyboard_start_log(void) {
+    key_log_remaining = KEY_LOG_EVENTS;
+    const char *notice = "\r\njolt: logging the next 20 keyboard messages\r\n";
+    display_output(notice, (DWORD)strlen(notice));
+}
+
+static const char *message_name(UINT message) {
+    switch (message) {
+    case WM_KEYDOWN: return "KEYDOWN";
+    case WM_KEYUP: return "KEYUP";
+    case WM_CHAR: return "CHAR";
+    case WM_SYSKEYDOWN: return "SYSKEYDOWN";
+    case WM_SYSKEYUP: return "SYSKEYUP";
+    case WM_SYSCHAR: return "SYSCHAR";
+    case WM_HOTKEY: return "HOTKEY";
+    default: return NULL;
+    }
+}
+
+void keyboard_log(UINT message, WPARAM wparam, LPARAM lparam) {
+    const char *name = message_name(message);
+    if (!key_log_remaining || !name) return;
+    char text[KEY_LOG_CAPACITY];
+    int length = snprintf(text, sizeof text, "[%s 0x%02lx lparam 0x%08lx alt %d ctrl %d shift %d]\r\n", name,
+        (unsigned long)wparam, (unsigned long)lparam, GetKeyState(VK_MENU) < 0, GetKeyState(VK_CONTROL) < 0,
+        GetKeyState(VK_SHIFT) < 0);
+    if (length > 0) display_output(text, (DWORD)length);
+    key_log_remaining--;
 }

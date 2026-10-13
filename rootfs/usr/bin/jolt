@@ -12,6 +12,7 @@ usage() {
     echo "  open FILE  open a file with its CE application"
     echo "  battery  battery and power status"
     echo "  shortcut [-s] NAME COMMAND  desktop shortcut (-s: Start menu) that runs COMMAND"
+    echo "  keys  show the next 20 keyboard messages JoLT receives"
     echo "  help  this help (also -h)"
     echo "Shift+PgUp/PgDn or Shift+Up/Down scroll back through output."
     echo "Alt+1..Alt+0 send F1..F10, Alt+- and Alt+= send F11 and F12."
@@ -80,6 +81,7 @@ case "$1" in
         osc "open=$(realpath "$2")"
         ;;
     battery) battery ;;
+    keys) osc keys ;;
     shortcut)
         place=d
         if [ "$2" = "-s" ]; then place=s; shift; fi

@@ -88,6 +88,7 @@ static void on_destroy(void) {
 }
 
 static LRESULT CALLBACK window_procedure(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
+    keyboard_log(message, wparam, lparam);
     switch (message) {
     case WM_PAINT:
         display_paint();
@@ -136,6 +137,7 @@ static LRESULT CALLBACK window_procedure(HWND window, UINT message, WPARAM wpara
 static void run_command(const char *command) {
     if (!strncmp(command, "open=", strlen("open="))) desktop_open(command + strlen("open="));
     else if (!strncmp(command, "shortcut=", strlen("shortcut="))) desktop_shortcut(command + strlen("shortcut="));
+    else if (!strcmp(command, "keys")) keyboard_start_log();
     else settings_command(command);
 }
 

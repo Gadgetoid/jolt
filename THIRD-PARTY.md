@@ -5,9 +5,21 @@ JoLT's own source is MIT licensed (see LICENSE). Release builds include or are b
 | Component | Version | Licence | Used for |
 | --- | --- | --- | --- |
 | BusyBox | 1.38.0 | GPL-2.0 | `busybox.elf`: the shell and applets |
-| musl | 1.2.5 | MIT | C library linked into `busybox.elf`, with JoLT's patches in `guest/musl` |
-| LLVM compiler-rt builtins | 21.1.8 | Apache-2.0 WITH LLVM-exception | Integer and soft-float helpers linked into `busybox.elf` |
+| links | 2.30 | GPL-2.0-or-later | `/usr/bin/links` |
+| htop | 3.5.3 | GPL-2.0-or-later | `/usr/bin/htop` |
+| frotz | 2.55 | GPL-2.0-or-later | `/usr/bin/frotz`, with `apps/frotz/no-root-check.patch` |
+| nano | 9.2 | GPL-3.0-or-later | `/usr/bin/nano` |
+| musl | 1.2.5 | MIT | C library linked into every Linux program, with JoLT's patches in `guest/musl` |
+| LLVM compiler-rt builtins | 21.1.8 | Apache-2.0 WITH LLVM-exception | Integer and soft-float helpers linked into every Linux program |
+| ncurses | 6.6 | X11 (MIT-style) | Terminal library linked into Vim, nano, ncdu, htop and frotz |
+| Vim | 9.2.1178 | Vim licence | `/usr/bin/vim` |
+| Lua | 5.4.7 | MIT | `/usr/bin/lua` |
+| MicroPython | 1.29.0 | MIT | `/usr/bin/micropython` |
+| jq | 1.8.2 | MIT | `/usr/bin/jq` |
+| ncdu | 1.22 | MIT | `/usr/bin/ncdu` |
+| Dropbear | 2026.94 | MIT-style | `/usr/bin/dbclient`, `/usr/bin/dropbearkey` |
+| Zork I, II, III | historicalsource | MIT | Story files in `/usr/share/games/zork` |
 | libvterm | 0.3.3 | MIT | Terminal emulation in `JoLT-Term.exe` |
-| crypto-algorithms (Brad Conte) | cfbde48 | Public domain | SHA-256 image check in `JoLT-Term.exe` |
+| crypto-algorithms (Brad Conte) | cfbde48 | Public domain | SHA-256 in `JoLT-Term.exe` and `JoltWorker.exe` |
 
-`busybox.elf` is distributed under GPL-2.0. Its complete corresponding source is the BusyBox, musl and compiler-rt archives in each release's `third-party-sources` archive, plus this repository's `guest/` directory and `guest/busybox/busybox.config`. `tools/fetch.sh` lists the upstream URLs and SHA-256 checksums.
+Each release has a `gpl-sources` archive with the complete corresponding source of the GPL programs above: their upstream archives, the musl, compiler-rt and ncurses archives they are statically linked with, `busybox.config` and the frotz patch. The build scripts are this repository's `guest/`, `apps/` and `tools/` directories. `tools/fetch.sh` lists every upstream URL and SHA-256 checksum, including the permissively licensed components, which are unmodified.

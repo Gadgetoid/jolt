@@ -30,7 +30,7 @@ tools/card.sh [FILE] # optional: emulator card image, build/jolt-card.cf by defa
 tests/emulator.sh   # QA in jornada-72x-emu
 ```
 
-`tools/build.sh` writes `build/dist/jolt-<version>.zip` and `jolt-<version>-third-party-sources.tar.gz`. GitHub Actions (`.github/workflows/build.yml`) runs the same build on Ubuntu with the pinned toolkit commit and LLVM release, uploads both as artifacts, and attaches them to a release for tags. Emulator QA stays local.
+`tools/build.sh` writes `build/dist/jolt-<version>.zip` and `jolt-<version>-gpl-sources.tar` (source for the GPL programs). GitHub Actions (`.github/workflows/build.yml`) runs the same build on Ubuntu with the pinned toolkit commit and LLVM release, uploads both as artifacts, and attaches them to a release for tags. Emulator QA stays local.
 
 ## Layout
 

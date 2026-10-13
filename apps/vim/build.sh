@@ -22,3 +22,5 @@ source_dir="$output/src/vim-9.2.1178/src"
     make -j"$jobs" vim > make.log
 )
 finish_app "$source_dir/vim" vim
+mkdir -p "$output/share/vim/vim92"
+cp "$(dirname "$0")/defaults.vim" "$output/share/vim/vim92/defaults.vim"

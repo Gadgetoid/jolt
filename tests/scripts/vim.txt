@@ -5,4 +5,10 @@ vim -u NONE /tmp/vim.txt
 ihello from vim\e0\e[3~\e[3~:wq\r
 @wait 1500
 cat /tmp/vim.txt
+vim /tmp/defaults.txt
+@wait 3000
+:set scrolloff?\r
+@wait 1000
+:q\r
+@wait 1000
 exit 0

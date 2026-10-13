@@ -1,0 +1,9 @@
+set nocompatible
+set backspace=indent,eol,start
+set history=200
+set ruler
+set showcmd
+set incsearch
+set scrolloff=5
+set nrformats-=octal
+set showmode

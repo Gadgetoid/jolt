@@ -25,7 +25,7 @@ const expectations = {
     extras: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["killall 0", "timeout status 143", "360: 2 2 2 3 3 5", "\r\n10\r\n", "e7c22b99", "a  \\n   b  \\n", "2 directories", "nice ok", "\r\nhistory ok"] },
     qol: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\nx.txt\r\ny.txt\r\n", "\r\n2\r\n", "l2 match l4 ", "size 2.0M", "\r\nSHOUT\r\n", "a/x.txt: OK", "\r\nrandom ok", "math 1099511627776", "\r\n/tmp/q/a\r\n", "beep 0", "\r\n3\r\n", "\r\n/usr/bin/ /usr/share/ \r\n"] },
     desktop: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\\my documents on /mnt/docs", "\r\n2\r\n", "\r\nhello\r\n", "\r\n/mnt/win\r\n", "\r\nclip from jolt\r\n", "\r\nmore\r\n", "10, 240", "1.16 1.2 0x03"] },
-    vim: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["vi improved 9.2", "\r\nxterm-256color\r\n", "\r\nllo from vim\r\n"] },
+    vim: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["vi improved 9.2", "\r\nxterm-256color\r\n", "\r\nllo from vim\r\n", "scrolloff=5"] },
     shortcut: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["55#\"\\storage card\\jolt\\jolt-term.exe\" -e \"echo hi; ssh -v\"", "43#\"\\storage card\\jolt\\jolt-term.exe\" -e \"top\"", "bad 1", "dropbear v2026"] },
     perf: { result: [], tty: [] },
     launch: { result: ["exit=3 signal=0"], tty: ["\r\nlaunched with args\r\n"] },

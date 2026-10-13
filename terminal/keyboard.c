@@ -56,11 +56,22 @@ static int function_number(WPARAM key) {
     return key >= VK_F1 && key < VK_F1 + FUNCTION_KEYS ? (int)(key - VK_F1) + 1 : 0;
 }
 
-static VTermModifier current_modifiers(void) {
+static int alt_held(void) {
+    return GetKeyState(VK_MENU) < 0;
+}
+
+static WPARAM alt_layer_key(WPARAM key) {
+    if (!alt_held()) return key;
+    if (key == VK_UP) return VK_PRIOR;
+    if (key == VK_DOWN) return VK_NEXT;
+    return key;
+}
+
+static VTermModifier current_modifiers(int alt_consumed) {
     int modifiers = VTERM_MOD_NONE;
     if (GetKeyState(VK_SHIFT) < 0) modifiers |= VTERM_MOD_SHIFT;
     if (GetKeyState(VK_CONTROL) < 0) modifiers |= VTERM_MOD_CTRL;
-    if (GetKeyState(VK_MENU) < 0) modifiers |= VTERM_MOD_ALT;
+    if (alt_held() && !alt_consumed) modifiers |= VTERM_MOD_ALT;
     return (VTermModifier)modifiers;
 }
 
@@ -87,14 +98,17 @@ void keyboard_key_down(WPARAM key) {
     }
     if (key == VK_LWIN) return;
     if (hotkeys_press(key)) return;
+    WPARAM layer_key = alt_layer_key(key);
+    int alt_consumed = layer_key != key;
+    key = layer_key;
     if (scrollback_key(key)) return;
     if (!is_modifier(key)) display_scroll_to(0);
     int function = function_number(key);
     if (function) {
-        display_key(VTERM_KEY_FUNCTION(function), current_modifiers());
+        display_key(VTERM_KEY_FUNCTION(function), current_modifiers(0));
         return;
     }
-    int chorded = GetKeyState(VK_CONTROL) < 0 || GetKeyState(VK_MENU) < 0;
+    int chorded = GetKeyState(VK_CONTROL) < 0 || alt_held();
     function = chorded ? alternate_function_number(key) : 0;
     if (function) {
         MSG pending;
@@ -104,12 +118,16 @@ void keyboard_key_down(WPARAM key) {
     }
     for (size_t index = 0; index < sizeof key_mappings / sizeof key_mappings[0]; index++) {
         if (key_mappings[index].key != key) continue;
-        display_key(key_mappings[index].terminal_key, current_modifiers());
+        display_key(key_mappings[index].terminal_key, current_modifiers(alt_consumed));
         return;
     }
 }
 
 int keyboard_system_key(WPARAM key) {
+    if (alt_layer_key(key) != key) {
+        keyboard_key_down(key);
+        return 1;
+    }
     int function = alternate_function_number(key);
     if (session.finished || !function) return 0;
     display_scroll_to(0);

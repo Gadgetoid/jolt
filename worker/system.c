@@ -160,6 +160,31 @@ LONG sys_gettimeofday(const DWORD *arguments) {
     return guest_copy_out(arguments[0], &value, sizeof value) ? 0 : error(LINUX_EFAULT);
 }
 
+static LONG set_unix_time(ULONGLONG seconds, DWORD nanoseconds) {
+    ULARGE_INTEGER value;
+    value.QuadPart = UNIX_EPOCH_FILETIME + seconds * FILETIME_TICKS_PER_SECOND + nanoseconds / 100;
+    FILETIME time = { value.LowPart, value.HighPart };
+    SYSTEMTIME system;
+    if (!FileTimeToSystemTime(&time, &system) || !SetSystemTime(&system)) return error(LINUX_EPERM);
+    return 0;
+}
+
+LONG sys_settimeofday(const DWORD *arguments) {
+    if (!arguments[0]) return 0;
+    struct linux_timeval value;
+    if (!guest_copy_in(&value, arguments[0], sizeof value)) return error(LINUX_EFAULT);
+    if (value.seconds < 0 || value.microseconds < 0 || value.microseconds >= 1000000) return error(LINUX_EINVAL);
+    return set_unix_time((ULONGLONG)value.seconds, (DWORD)value.microseconds * 1000);
+}
+
+LONG sys_clock_settime(const DWORD *arguments) {
+    if (!is_realtime(arguments[0])) return error(LINUX_EINVAL);
+    struct linux_timespec value;
+    if (!guest_copy_in(&value, arguments[1], sizeof value)) return error(LINUX_EFAULT);
+    if (value.seconds < 0 || value.nanoseconds < 0 || value.nanoseconds >= (LONG)NANOSECONDS_PER_SECOND) return error(LINUX_EINVAL);
+    return set_unix_time((ULONGLONG)value.seconds, (DWORD)value.nanoseconds);
+}
+
 LONG sys_times(const DWORD *arguments) {
     LONG ticks = (LONG)(GetTickCount() / (MILLISECONDS_PER_SECOND / CLOCK_TICKS_PER_SECOND));
     if (arguments[0]) {

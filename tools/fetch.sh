@@ -53,6 +53,14 @@ fetch htop-3.5.3.tar.xz https://github.com/htop-dev/htop/releases/download/3.5.3
     a8b164386494cb85bb255a415a3f5f80afe7a0c4491da5d113b3a0f951087e65
 fetch frotz-2.55.tar.gz https://gitlab.com/DavidGriffith/frotz/-/archive/2.55/frotz-2.55.tar.gz \
     a8c4c4d79a2aa9b39e0efbbd3e0803f1dc5ef36f75f2c2945e295d190575eb09
+fetch curl-8.22.0.tar.xz https://github.com/curl/curl/releases/download/curl-8_22_0/curl-8.22.0.tar.xz \
+    f7ef3ae8a22e521f289803fe93543eb64c329b58aa73a9e224dfd915a2a5f4f7
+fetch mbedtls-3.6.7.tar.bz2 https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2 \
+    a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6
+fetch libressl-4.3.3.tar.gz https://cdn.openbsd.org/pub/OpenBSD/LibreSSL/libressl-4.3.3.tar.gz \
+    ff97c432457f349e6ba3d416ab903bc7468f1436f0f32efe5fff808de292c7b8
+fetch cacert-2026-09-25.pem https://curl.se/ca/cacert-2026-09-25.pem \
+    a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505
 zork=https://raw.githubusercontent.com/historicalsource
 fetch zork1.z3 "$zork/zork1/97b7b3d68c075dd9af7da499c3e9690ada3471fd/COMPILED/zork1.z3" \
     37084966477dff679282de42974b2077156b1bd68fad92a65d4ea94d8eb64d79

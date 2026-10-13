@@ -9,6 +9,7 @@
 #include "network.h"
 #include "random.h"
 #include "serial.h"
+#include "eventfd.h"
 
 #define VECTOR_LIMIT 64
 
@@ -144,6 +145,8 @@ static LONG read_descriptor(DWORD fd, DWORD buffer, DWORD length, LONG position)
         return network_read(index, (char *)buffer, length);
     case DESCRIPTION_SERIAL:
         return serial_read(index, (char *)buffer, length, nonblocking);
+    case DESCRIPTION_EVENT:
+        return eventfd_read(index, (char *)buffer, length);
     case DESCRIPTION_RANDOM:
         random_fill((BYTE *)buffer, length);
         return (LONG)length;
@@ -177,6 +180,8 @@ static LONG write_descriptor(DWORD fd, DWORD buffer, DWORD length, LONG position
         return network_write(index, (const char *)buffer, length);
     case DESCRIPTION_SERIAL:
         return serial_write(index, (const char *)buffer, length, (description->flags & LINUX_O_NONBLOCK) != 0);
+    case DESCRIPTION_EVENT:
+        return eventfd_write(index, (const char *)buffer, length);
     default:
         return error(LINUX_EBADF);
     }
@@ -450,7 +455,7 @@ LONG sys_fcntl(const DWORD *arguments) {
         set_cloexec(fd, (argument & LINUX_FD_CLOEXEC) != 0);
         return 0;
     case LINUX_F_GETFL:
-        return (LONG)(description->flags | LINUX_O_LARGEFILE);
+        return (LONG)((description->flags & ~JOLT_EVENTFD_SEMAPHORE) | LINUX_O_LARGEFILE);
     case LINUX_F_SETFL:
         set_status_flags(description, argument);
         return 0;

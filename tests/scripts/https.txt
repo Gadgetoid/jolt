@@ -1,0 +1,6 @@
+date -s "2026-10-13 12:00:00" > /dev/null; date +%Y
+curl -sS -o /dev/null -w "curl %{http_code} verify %{ssl_verify_result}\\n" https://example.com/
+curl -sS https://example.com/ | grep -o "<title>.*</title>"
+curl -sS -o /dev/null https://self-signed.badssl.com/; echo "selfsigned status $?"
+links -dump https://example.com/ | head -3
+exit 0

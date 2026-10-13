@@ -6,6 +6,7 @@
 #include "syscalls.h"
 #include "network.h"
 #include "serial.h"
+#include "eventfd.h"
 
 #define SET_WORDS ((JOLT_FDS + 31) / 32)
 #define SOCKET_POLL_MILLISECONDS 50
@@ -45,6 +46,8 @@ static int readiness(DWORD fd, int events) {
         ready = network_readiness(index, events);
     } else if (description->type == DESCRIPTION_SERIAL) {
         ready = serial_readiness(index);
+    } else if (description->type == DESCRIPTION_EVENT) {
+        ready = eventfd_readiness(index);
     } else if (description->type == DESCRIPTION_PIPE_WRITE) {
         ready = pipe_output_readiness(&k->pipes[description->pipe]);
     } else {

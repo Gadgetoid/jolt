@@ -33,6 +33,7 @@ const expectations = {
     "ssh-probe": { result: [], tty: [] },
     serial: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["4,  64", "4,  67", "'/dev/ttys0': resource busy", "'/dev/ttys1': no such device", "speed 115200 baud", "\r\nhello serial\r\n", "\r\nmicro\r", "microcom status 0"] },
     ping: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["64 bytes from 10.0.2.2: seq=2", "3 packets transmitted, 3 packets received", "unreachable status 1", " 1  10.0.2.2 (10.0.2.2)"] },
+    https: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\n2026\r\n", "curl 200 verify 0", "<title>example domain</title>", "selfsigned status 60", "this domain is for use in documentation"] },
     apps2: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\n[2,4,6]\r\n", "mpy micropython 45", "[0, 1, 4, 9, 16]", "gnu nano, version 9.2", "ncdu 1.22", "htop 3.5.3", "frotz v2.55", "zork1.z3", "os: jolt", "windows ce 3.00", "host: hp jornada 720", "packages: "] },
     netapps: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\n32\r\n", "\r\n1\r\n", "jolt links test", "rendered in text mode."] },
     vi: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\njolt edited this file.\r\n"] },

@@ -34,7 +34,7 @@ NETWORK SUPPORT??
 - frotz - DONE (2.55, with Zork I-III under MIT as `zork [1|2|3]`)
 - vim (tiny feature set, builtin termcap) - DONE (Vim 9.2 tiny over ncurses 6.6; normal needs a larger image limit)
 - MicroPython UNIX port - DONE (1.29; no threads, FFI or SSL)
-- ping and traceroute via CE IcmpSendEcho (WsControl) behind emulated raw ICMP sockets
+- ping and traceroute via CE IcmpSendEcho (WsControl) behind emulated raw ICMP sockets - DONE (traceroute uses -I; multi-hop untested in the emulator)
 - SQLite as a shared library linked into Lua (lsqlite3) and MicroPython (usqlite), plus the sqlite3 shell; no WAL/mmap, threads off, fcntl locks are a no-op today
 - NetHack
 
@@ -51,8 +51,8 @@ NETWORK SUPPORT??
 - BusyBox nc, wget, telnet, ftpget/ftpput, httpd - DONE (plus tftp, whois, nslookup)
 - Dropbear dbclient (ssh) - DONE (dbclient, dropbearkey; CryptoAPI randomness)
 - HTTPS in wget - DONE (BusyBox TLS 1.2 via ssl_client helper over socketpair; no certificate validation)
-- BearSSL for HTTPS in links and other apps
-- links (text mode browser) - DONE (HTTP only until BearSSL)
+- HTTPS in links (LibreSSL) and curl (Mbed TLS) with certificate verification against the Mozilla CA bundle in /etc/ssl/cert.pem - DONE
+- links (text mode browser) - DONE (HTTPS via LibreSSL)
 
 ### Terminal
 

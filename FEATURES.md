@@ -35,7 +35,8 @@ NETWORK SUPPORT??
 - vim (tiny feature set, builtin termcap) - DONE (Vim 9.2 tiny over ncurses 6.6; normal needs a larger image limit)
 - MicroPython UNIX port - DONE (1.29; no threads, FFI or SSL)
 - ping and traceroute via CE IcmpSendEcho (WsControl) behind emulated raw ICMP sockets
-- sqlite3 shell, NetHack
+- SQLite as a shared library linked into Lua (lsqlite3) and MicroPython (usqlite), plus the sqlite3 shell; no WAL/mmap, threads off, fcntl locks are a no-op today
+- NetHack
 
 ### Serial
 
@@ -66,6 +67,10 @@ NETWORK SUPPORT??
 - PC speaker tier: KIOCSOUND/KDMKTONE ioctls on the tty synthesised as a square wave through waveOut, BusyBox beep - DONE (tone stops when its owner exits)
 - /dev/dsp (OSS): write() PCM into waveOut buffers, SNDCTL_DSP_SPEED/SETFMT/CHANNELS mapped to WAVEFORMATEX
 - Players on top of /dev/dsp (e.g. a tracker or mp3 decoder, CPU permitting)
+
+### Pocket Outlook data
+
+- `jolt sync` (or similar): export CE databases (Contacts, Calendar, Tasks, Inbox via CEDB) read-only as CSV/JSON for jq, Lua or Python; maybe write back later
 
 ### Files
 

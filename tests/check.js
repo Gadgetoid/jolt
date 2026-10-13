@@ -28,6 +28,7 @@ const expectations = {
     vim: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["vi improved 9.2", "\r\nxterm-256color\r\n", "\r\nllo from vim\r\n", "scrolloff=5"] },
     shortcut: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["55#\"\\storage card\\jolt\\jolt-term.exe\" -e \"echo hi; ssh -v\"", "43#\"\\storage card\\jolt\\jolt-term.exe\" -e \"top\"", "bad 1", "dropbear v2026"] },
     perf: { result: [], tty: [] },
+    "bash-perf": { result: [], tty: [] },
     launch: { result: ["exit=3 signal=0"], tty: ["\r\nlaunched with args\r\n"] },
     hold: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\nheld command\r\n", "\r\nin shell after hold\r\n"] },
     "ssh-probe": { result: [], tty: [] },
@@ -36,6 +37,7 @@ const expectations = {
     https: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\n2026\r\n", "curl 200 verify 0", "<title>example domain</title>", "selfsigned status 60", "this domain is for use in documentation"] },
     ntp: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\n2000\r\n", "ntpd status 0", "\r\n2026\r\n"] },
     apps2: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\n[2,4,6]\r\n", "mpy micropython 45", "[0, 1, 4, 9, 16]", "gnu nano, version 9.2", "ncdu 1.22", "htop 3.5.3", "frotz v2.55", "zork1.z3", "os: jolt", "windows ce 3.00", "host: hp jornada 720", "packages: "] },
+    bash: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["gnu bash, version 5.3", "assoc blue 3", "sum 55 nested deep", "first a", "status 0 0", "func arg", "subshell 3", "inner 5", "background done", "trapped", "script 2 x y", "running", "interactive 5.3"] },
     netapps: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\n32\r\n", "\r\n1\r\n", "jolt links test", "rendered in text mode."] },
     vi: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\njolt edited this file.\r\n"] },
 };

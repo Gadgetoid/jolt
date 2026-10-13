@@ -27,7 +27,7 @@ for pair in "LICENSE:LICENSE.txt" "THIRD-PARTY.md:THIRD-PARTY.txt" "docs/card-re
     sed 's/$/\r/' "${pair%%:*}" > "$stage/${pair##*:}"
 done
 (cd build/dist/stage && zip -qr -X "../jolt-$version.zip" JoLT)
-gpl_sources=(busybox-1.38.0.tar.bz2 links-2.30.tar.bz2 htop-3.5.3.tar.xz frotz-2.55.tar.gz nano-9.2.tar.xz
+gpl_sources=(busybox-1.38.0.tar.bz2 links-2.30.tar.bz2 htop-3.5.3.tar.xz frotz-2.55.tar.gz nano-9.2.tar.xz bash-5.3.tar.gz
     musl-1.2.5.tar.gz compiler-rt-21.1.8.src.tar.xz ncurses-6.6.tar.gz libressl-4.3.3.tar.gz)
 mkdir -p build/dist/sources
 for archive in "${gpl_sources[@]}"; do cp "build/deps/archives/$archive" build/dist/sources/; done

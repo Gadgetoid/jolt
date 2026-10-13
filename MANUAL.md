@@ -215,6 +215,7 @@ These live in `/usr/bin`:
 | --- | --- |
 | `vim` | Vim 9.2, tiny build (no syntax highlighting or plugins) |
 | `nano` | Nano 9.2 text editor |
+| `bash` | GNU Bash 5.3, for scripts that need it. The login shell stays BusyBox `sh` |
 | `links` | Text-mode web browser with HTTPS |
 | `curl` | Fetch URLs, with HTTPS |
 | `ssh` / `dbclient` | Dropbear SSH client |

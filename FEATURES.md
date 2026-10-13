@@ -25,6 +25,7 @@ NETWORK SUPPORT??
 - Loader runs ELF programs other than busybox.elf - DONE (JoLT ABI note instead of a hash manifest; JOLT_ALLOW_UNMARKED=1 overrides)
 - Lua - DONE (5.4.7)
 - nano - DONE (9.2)
+- bash - DONE (5.3, optional; ash stays the login shell)
 - mg or kilo
 - jq - DONE (1.8.2)
 - ncdu - DONE (1.22)
@@ -93,7 +94,8 @@ NETWORK SUPPORT??
 ### Performance
 
 - Process start: BusyBox text aliased from the shared image with VirtualCopy (no copy on fork or exec), batched commit/decommit, AT_RANDOM from a shared entropy pool instead of CryptoAPI per process. About 4x faster `ls` in the emulator (100 ms to 26 ms).
-- Next: fork setup (spare hand-off, ~20 ms), apps other than BusyBox still copy their text
+- App images cached in named shared mappings keyed by path, size and mtime, text aliased with VirtualCopy while any process uses them. Nested `bash -c :` 3x faster in the emulator. VirtualCopy needs source and destination at the same offset within 64 KB, so the ELF starts at the view base.
+- Next: fork setup (spare hand-off, ~20 ms), keep recently used app images warm after their last process exits
 
 ## Possible?
 

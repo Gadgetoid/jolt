@@ -2,7 +2,7 @@
 #include "worker.h"
 #include "image.h"
 
-LONG worker_exec(const char *path, char **arguments, char **environment, const struct guest_image *image);
+LONG worker_exec(const char *path, char **arguments, char **environment, struct guest_image *image);
 LONG worker_fork(void);
 int fork_child(void);
 void close_local(int fd);

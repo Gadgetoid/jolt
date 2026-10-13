@@ -60,6 +60,7 @@ struct worker_state {
     DWORD random;
     DWORD text_start, text_end, text_offset;
     int image_shared;
+    DWORD image_key, image_mapping_size;
     DWORD alarm_deadline;
     DWORD alarm_interval;
 };

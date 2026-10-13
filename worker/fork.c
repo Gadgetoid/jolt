@@ -140,7 +140,7 @@ static int page_is_text(DWORD page) {
 
 static int copy_run(HANDLE source, DWORD first, DWORD last, int text) {
     DWORD address = first * PAGE_SIZE, size = (last - first + 1) * PAGE_SIZE, count = 0;
-    const BYTE *shared = text ? jolt.image + state.text_offset + (address - state.text_start) : NULL;
+    const BYTE *shared = text ? image_shared_data() + state.text_offset + (address - state.text_start) : NULL;
     if (text && alias_pages(address, size, shared)) return 1;
     if (!commit_pages(address, size)) return 0;
     if (text) {
@@ -172,6 +172,7 @@ int fork_child(void) {
     memcpy(pages, state.committed, sizeof pages);
     memset(state.committed, 0, sizeof state.committed);
     state.page_count = 0;
+    if (success) image_attach();
     success = success && copy_pages(source, pages);
     CloseHandle(source);
     for (DWORD index = 0; success && index < state.range_count; index++) success = protect_range(&state.ranges[index]);

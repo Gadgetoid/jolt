@@ -1,0 +1,7 @@
+time sh -c 'i=0; while [ $i -lt 10 ]; do bash -c :; i=$((i+1)); done'
+time bash -c 'for i in 1 2 3 4 5 6 7 8 9 10; do bash -c :; done'
+time bash -c 'for i in 1 2 3 4 5 6 7 8 9 10; do x=$(echo $i); done'
+time bash -c 'for i in 1 2 3 4 5 6 7 8 9 10; do x=$(echo $i); done'
+time bash -c 'for i in 1 2 3 4 5 6 7 8 9 10; do bash -c :; done'
+time sh -c 'i=0; while [ $i -lt 10 ]; do bash -c :; i=$((i+1)); done'
+exit 0

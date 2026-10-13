@@ -9,13 +9,14 @@ JoLT's own source is MIT licensed (see LICENSE). Release builds include or are b
 | htop | 3.5.3 | GPL-2.0-or-later | `/usr/bin/htop` |
 | frotz | 2.55 | GPL-2.0-or-later | `/usr/bin/frotz`, with `apps/frotz/no-root-check.patch` |
 | nano | 9.2 | GPL-3.0-or-later | `/usr/bin/nano` |
+| Bash | 5.3 | GPL-3.0-or-later | `/usr/bin/bash` |
 | musl | 1.2.5 | MIT | C library linked into every Linux program, with JoLT's patches in `guest/musl` |
 | LLVM compiler-rt builtins | 21.1.8 | Apache-2.0 WITH LLVM-exception | Integer and soft-float helpers linked into every Linux program |
 | LibreSSL | 4.3.3 | OpenSSL, SSLeay and ISC | TLS for links |
 | curl | 8.22.0 | curl (MIT-style) | `/usr/bin/curl` |
 | Mbed TLS | 3.6.7 | Apache-2.0 OR GPL-2.0-or-later | TLS for curl |
 | Mozilla CA certificates (via curl.se) | 2026-09-25 | MPL-2.0 | `/etc/ssl/cert.pem`, trusted roots for curl and links |
-| ncurses | 6.6 | X11 (MIT-style) | Terminal library linked into Vim, nano, ncdu, htop and frotz |
+| ncurses | 6.6 | X11 (MIT-style) | Terminal library linked into Vim, nano, Bash, ncdu, htop and frotz |
 | Vim | 9.2.1178 | Vim licence | `/usr/bin/vim` |
 | Lua | 5.4.7 | MIT | `/usr/bin/lua` |
 | MicroPython | 1.29.0 | MIT | `/usr/bin/micropython` |

@@ -209,12 +209,12 @@ static void close_on_exec(const char *path, char **arguments) {
     jolt_unlock();
 }
 
-LONG worker_exec(const char *path, char **arguments, char **environment, const struct guest_image *image) {
+LONG worker_exec(const char *path, char **arguments, char **environment, struct guest_image *image) {
     release_memory();
     reset_signal_handlers();
     close_on_exec(path, arguments);
     struct loaded_image loaded;
-    state.image_shared = image->shared;
+    image_adopt(image);
     if (!load_elf(image, &loaded) || !setup_gate()) return -1;
     DWORD stack = build_stack(path, arguments, environment, &loaded);
     if (!stack) return -1;

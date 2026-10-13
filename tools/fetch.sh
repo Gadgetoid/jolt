@@ -45,6 +45,8 @@ fetch vim-9.2.1178.tar.gz https://github.com/vim/vim/archive/refs/tags/v9.2.1178
     62b4a204676f0e2d6c11f1951ac204b1c83d22cd3f383599e7455e96cf87a68a
 fetch nano-9.2.tar.xz https://ftp.gnu.org/gnu/nano/nano-9.2.tar.xz \
     05ecb99247b782e8a5b3a25ed4101dd034b0236902f7449bc9795b717642f7e9
+fetch bash-5.3.tar.gz https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz \
+    0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba
 fetch ncdu-1.22.tar.gz https://dev.yorhel.nl/download/ncdu-1.22.tar.gz \
     0ad6c096dc04d5120581104760c01b8f4e97d4191d6c9ef79654fa3c691a176b
 fetch jq-1.8.2.tar.gz https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-1.8.2.tar.gz \

@@ -4,7 +4,7 @@ set -euo pipefail
 workspace=$(cd "$(dirname "$0")/.." && pwd)
 emulator=${JORNADA_EMU:-"$workspace/../jornada-72x-emu"}
 state=${JORNADA_STATE:-"$emulator/build/user-latest.state"}
-scripts=${JOLT_SCRIPTS:-"smoke shell interrupt vi spawn display font fullscreen-exit colour jobs apps lua network extras netapps qol desktop vim shortcut launch hold serial apps2 ping colour-screen"}
+scripts=${JOLT_SCRIPTS:-"smoke shell interrupt vi spawn display font fullscreen-exit colour jobs apps lua network extras netapps qol desktop vim shortcut launch hold serial apps2 ping bash colour-screen"}
 batch_size=${JOLT_BATCH:-4}
 socket="/tmp/jolt-qa-$$.sock"
 serial_port=$((20000 + $$ % 10000))

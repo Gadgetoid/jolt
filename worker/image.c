@@ -12,6 +12,25 @@
 #define IMAGE_FILE_LIMIT (IMAGE_LIMIT - GUEST_START)
 #define NOTE_ALIGNMENT 4
 #define REFUSAL_CAPACITY 384
+#define CACHE_MAGIC 0x4a6f4c54UL
+#define CACHE_NAME_CAPACITY 48
+#define FNV_OFFSET 2166136261UL
+#define FNV_PRIME 16777619UL
+#define HEX_DIGITS 8
+
+struct cache_header {
+    DWORD magic;
+    DWORD size;
+    FILETIME written;
+    WCHAR path[MAX_PATH];
+};
+
+struct cached_image {
+    HANDLE mapping;
+    BYTE *view;
+};
+
+static struct cached_image current;
 
 static const char elf_magic[4] = { 0x7f, 'E', 'L', 'F' };
 
@@ -70,20 +89,150 @@ static void report_unmarked(const char *absolute) {
     if (length > 0) jolt_tty_write(text, (DWORD)(length < (int)sizeof text ? length : (int)sizeof text - 1), 1);
 }
 
+static DWORD hash_bytes(DWORD hash, const void *data, DWORD length) {
+    const BYTE *bytes = data;
+    for (DWORD index = 0; index < length; index++) hash = (hash ^ bytes[index]) * FNV_PRIME;
+    return hash;
+}
+
+static DWORD cache_key(const WCHAR *path, DWORD size, const FILETIME *written) {
+    DWORD hash = hash_bytes(FNV_OFFSET, path, (DWORD)(wcslen(path) * sizeof(WCHAR)));
+    hash = hash_bytes(hash, &size, sizeof size);
+    hash = hash_bytes(hash, written, sizeof *written);
+    return hash ? hash : 1;
+}
+
+static void cache_name(WCHAR *name, DWORD key) {
+    static const WCHAR digits[] = L"0123456789abcdef";
+    jolt_object_name(name, L"Jolt-app-", jolt.identifier, -1);
+    size_t length = wcslen(name);
+    name[length++] = L'-';
+    for (int position = HEX_DIGITS - 1; position >= 0; position--) name[length++] = digits[(key >> (position * 4)) & 15];
+    name[length] = 0;
+}
+
+static DWORD header_offset(DWORD size) {
+    return (size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+}
+
+static struct cache_header *cache_header(BYTE *view, DWORD size) {
+    return (struct cache_header *)(view + header_offset(size));
+}
+
+static int open_mapping(DWORD key, DWORD mapping_size, struct cached_image *cached, int *existed) {
+    WCHAR name[CACHE_NAME_CAPACITY];
+    cache_name(name, key);
+    cached->mapping = CreateFileMappingW(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, mapping_size, name);
+    if (!cached->mapping) return 0;
+    *existed = GetLastError() == ERROR_ALREADY_EXISTS;
+    cached->view = MapViewOfFile(cached->mapping, FILE_MAP_WRITE, 0, 0, mapping_size);
+    if (cached->view) return 1;
+    CloseHandle(cached->mapping);
+    cached->mapping = NULL;
+    return 0;
+}
+
+static void close_mapping(struct cached_image *cached) {
+    if (cached->view) UnmapViewOfFile(cached->view);
+    if (cached->mapping) CloseHandle(cached->mapping);
+    cached->view = NULL;
+    cached->mapping = NULL;
+}
+
+static int header_matches(const struct cache_header *header, const WCHAR *path, DWORD size, const FILETIME *written) {
+    return header->magic == CACHE_MAGIC && header->size == size && !memcmp(&header->written, written, sizeof *written) &&
+        !wcscmp(header->path, path);
+}
+
+static int fill_cache(HANDLE file, BYTE *view, const WCHAR *path, DWORD size, const FILETIME *written) {
+    struct cache_header *header = cache_header(view, size);
+    DWORD count = 0;
+    if (!ReadFile(file, view, size, &count, NULL) || count != size) return 0;
+    header->size = size;
+    header->written = *written;
+    wcsncpy(header->path, path, MAX_PATH - 1);
+    header->magic = CACHE_MAGIC;
+    return 1;
+}
+
+static int load_cached(HANDLE file, const WCHAR *path, struct guest_image *image) {
+    DWORD size = GetFileSize(file, NULL);
+    FILETIME written;
+    if (size == INVALID_FILE_SIZE || !size || size > IMAGE_FILE_LIMIT || wcslen(path) >= MAX_PATH) return 0;
+    if (!GetFileTime(file, NULL, NULL, &written)) return 0;
+    DWORD key = cache_key(path, size, &written), mapping_size = header_offset(size) + sizeof(struct cache_header);
+    struct cached_image cached;
+    int existed = 0;
+    if (!open_mapping(key, mapping_size, &cached, &existed)) return 0;
+    const struct cache_header *header = cache_header(cached.view, size);
+    int ready = existed ? header_matches(header, path, size, &written) : fill_cache(file, cached.view, path, size, &written);
+    if (!ready) {
+        close_mapping(&cached);
+        return 0;
+    }
+    image->mapping = cached.mapping;
+    image->view = cached.view;
+    image->data = cached.view;
+    image->size = size;
+    image->key = key;
+    image->mapping_size = mapping_size;
+    image->shared = 1;
+    return 1;
+}
+
 LONG image_load(const char *absolute, struct guest_image *image, int allow_unmarked) {
     memset(image, 0, sizeof *image);
-    LONG result = jolt_file_load(absolute, &image->allocation, &image->size, IMAGE_FILE_LIMIT);
+    HANDLE file;
+    WCHAR path[MAX_PATH];
+    LONG result = jolt_file_open_host(absolute, &file, path);
     if (result) return result;
-    if (!allow_unmarked && !marked_for_jolt(image->allocation, image->size)) {
+    int cached = load_cached(file, path, image);
+    CloseHandle(file);
+    if (!cached) {
+        result = jolt_file_load(absolute, &image->allocation, &image->size, IMAGE_FILE_LIMIT);
+        if (result) return result;
+        image->data = image->allocation;
+    }
+    if (!allow_unmarked && !marked_for_jolt(image->data, image->size)) {
         report_unmarked(absolute);
         image_release(image);
         return -(LONG)LINUX_EACCES;
     }
-    image->data = image->allocation;
     return 0;
 }
 
 void image_release(struct guest_image *image) {
     if (image->allocation) LocalFree(image->allocation);
+    struct cached_image cached = { image->mapping, image->view };
+    close_mapping(&cached);
     memset(image, 0, sizeof *image);
+}
+
+void image_adopt(struct guest_image *image) {
+    close_mapping(&current);
+    current.mapping = image->mapping;
+    current.view = image->view;
+    image->mapping = NULL;
+    image->view = NULL;
+    state.image_shared = image->shared;
+    state.image_key = image->key;
+    state.image_mapping_size = image->mapping_size;
+}
+
+int image_attach(void) {
+    int existed = 0;
+    if (!state.image_key) return 1;
+    if (open_mapping(state.image_key, state.image_mapping_size, &current, &existed)) {
+        const struct cache_header *header = (const struct cache_header *)(current.view + state.image_mapping_size - sizeof(struct cache_header));
+        if (existed && header->magic == CACHE_MAGIC) return 1;
+        close_mapping(&current);
+    }
+    state.image_shared = 0;
+    state.image_key = 0;
+    return 0;
+}
+
+const BYTE *image_shared_data(void) {
+    if (!state.image_key) return jolt.image;
+    return current.view;
 }

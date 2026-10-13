@@ -1,0 +1,14 @@
+bash --version | head -1
+bash -c 'declare -A colour=([sky]=blue [grass]=green); names=(one two three); [[ ${names[1]} == t* ]] && echo "assoc ${colour[sky]} ${#names[@]}"'
+bash -c 'total=0; for n in $(seq 1 10); do total=$((total + n)); done; echo "sum $total $(echo nested $(echo deep))"'
+bash -c 'printf "%s\n" c a b | sort | { read first; echo "first $first"; }; echo "status ${PIPESTATUS[*]}"'
+bash -c 'f() { local x=$1; echo "func $x"; }; f arg; ( exit 3 ); echo "subshell $?"; echo "$(bash -c "echo inner \$BASH_VERSINFO")"'
+bash -c 'sleep 1 & wait $! && echo "background done"; trap "echo trapped" EXIT'
+echo 'echo script $# "$@"' > /tmp/s.sh && bash /tmp/s.sh x y
+bash
+sleep 2 &
+jobs
+wait
+echo "interactive ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}"
+exit
+exit 0

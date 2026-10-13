@@ -38,6 +38,7 @@ LONG jolt_file_touch(const char *absolute);
 int jolt_is_applet(const char *name);
 LONG jolt_file_statfs(struct linux_statfs64 *record);
 LONG jolt_file_create(const char *absolute, const void *data, DWORD size);
+LONG jolt_file_open_host(const char *absolute, HANDLE *file, WCHAR *path);
 LONG jolt_file_load(const char *absolute, BYTE **data, DWORD *size, DWORD limit);
 
 #endif

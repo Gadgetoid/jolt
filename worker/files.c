@@ -743,6 +743,13 @@ LONG jolt_file_statfs(struct linux_statfs64 *record) {
     return 0;
 }
 
+LONG jolt_file_open_host(const char *absolute, HANDLE *file, WCHAR *path) {
+    LONG result = host_path(absolute, path);
+    if (result) return result;
+    *file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    return *file == INVALID_HANDLE_VALUE ? file_error() : 0;
+}
+
 LONG jolt_file_load(const char *absolute, BYTE **data, DWORD *size, DWORD limit) {
     WCHAR path[MAX_PATH];
     LONG result = host_path(absolute, path);

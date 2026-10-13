@@ -30,7 +30,7 @@ flags="--target=arm-linux-gnueabi -march=armv4 -marm -mfloat-abi=soft -fno-unwin
     CC="$llvm/bin/clang $flags" AR="$llvm/bin/llvm-ar" RANLIB="$llvm/bin/llvm-ranlib" \
         "$musl/configure" --target=arm-linux-gnueabi --disable-shared --prefix="$build/sysroot" \
         CFLAGS="-Os -ffunction-sections -fdata-sections" LIBCC=""
-    "$make_tool" -j"$jobs" ARCH_SRCS="$musl/src/thread/arm/__set_thread_area.c $musl/src/signal/arm/restore.s" \
+    "$make_tool" -j"$jobs" ARCH_SRCS="$musl/src/thread/arm/__set_thread_area.c $musl/src/signal/arm/restore.s $musl/src/signal/arm/sigsetjmp.s" \
         lib/libc.a lib/libm.a install-headers
 )
 

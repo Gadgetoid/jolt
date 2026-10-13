@@ -7,6 +7,7 @@
 #include "process.h"
 #include "syscalls.h"
 #include "network.h"
+#include "icmp.h"
 
 #define WAIT_SLICE_MILLISECONDS 100
 #define DNS_PORT 53
@@ -241,6 +242,7 @@ static LONG take_dns_reply(int index, char *buffer, DWORD length, DWORD from, DW
 }
 
 int network_readiness(int index, int events) {
+    if (icmp_owns(index)) return icmp_readiness(index, events);
     if (dns_replies[index].pending) return LINUX_POLLIN & events;
     LONG ready = simple_call(NETWORK_READINESS, description_at(index)->socket, 0, 0, 0);
     if (ready < 0) return LINUX_POLLERR;
@@ -252,6 +254,7 @@ int network_readiness(int index, int events) {
 }
 
 DWORD network_pending(int index) {
+    if (icmp_owns(index)) return icmp_pending(index);
     if (dns_replies[index].pending) return dns_replies[index].length;
     LONG count = simple_call(NETWORK_PENDING_BYTES, description_at(index)->socket, 0, 0, 0);
     return count > 0 ? (DWORD)count : 0;
@@ -259,7 +262,7 @@ DWORD network_pending(int index) {
 
 void network_release(int index) {
     const struct jolt_description *description = description_at(index);
-    if (description->type != DESCRIPTION_SOCKET || description->references != 1) return;
+    if (description->type != DESCRIPTION_SOCKET || description->references != 1 || icmp_owns(index)) return;
     simple_call(NETWORK_CLOSE, description->socket, 0, 0, 0);
     dns_replies[index].pending = 0;
 }
@@ -282,6 +285,8 @@ static LONG install_socket(DWORD handle, DWORD type, DWORD flags) {
 LONG sys_socket(const DWORD *arguments) {
     DWORD domain = arguments[0], type = arguments[1] & LINUX_SOCK_TYPE_MASK, flags = arguments[1] & ~LINUX_SOCK_TYPE_MASK;
     if (domain != LINUX_AF_INET) return error(LINUX_EAFNOSUPPORT);
+    int icmp = arguments[2] == LINUX_IPPROTO_ICMP && (type == LINUX_SOCK_RAW || type == LINUX_SOCK_DGRAM);
+    if (icmp) return icmp_socket(type, flags);
     if (type != LINUX_SOCK_STREAM && type != LINUX_SOCK_DGRAM) return error(LINUX_EPROTONOSUPPORT);
     LONG result = simple_call(NETWORK_SOCKET, 0, type == LINUX_SOCK_STREAM ? SOCK_STREAM : SOCK_DGRAM, 0, 0);
     if (own_request()->error) return result;
@@ -301,6 +306,7 @@ LONG sys_bind(const DWORD *arguments) {
     struct sockaddr_in address;
     LONG result = socket_of(arguments[0], &index, &handle);
     if (result) return result;
+    if (icmp_owns(index)) return 0;
     if (!copy_address_in(arguments[1], arguments[2], &address)) return error(LINUX_EINVAL);
     result = address_call(NETWORK_BIND, handle, &address);
     return result < 0 ? result : 0;
@@ -319,6 +325,7 @@ LONG sys_connect(const DWORD *arguments) {
     LONG result = socket_of(arguments[0], &index, &handle);
     if (result) return result;
     if (!copy_address_in(arguments[1], arguments[2], &address)) return error(LINUX_EINVAL);
+    if (icmp_owns(index)) return icmp_connect(index, &address);
     if (description_at(index)->socket_type == LINUX_SOCK_DGRAM && is_dns_target(&address)) return 0;
     result = address_call(NETWORK_CONNECT, handle, &address);
     if (result >= 0) return 0;
@@ -378,6 +385,12 @@ static LONG name_of(const DWORD *arguments, DWORD operation) {
     DWORD handle;
     LONG result = socket_of(arguments[0], &index, &handle);
     if (result) return result;
+    if (icmp_owns(index)) {
+        struct sockaddr_in local;
+        memset(&local, 0, sizeof local);
+        local.sin_family = AF_INET;
+        return copy_address_out(arguments[1], arguments[2], &local);
+    }
     struct jolt_network_request *request = own_request();
     request->has_address = 0;
     result = call_broker(request, operation, handle);
@@ -495,6 +508,7 @@ LONG sys_sendto(const DWORD *arguments) {
     if (!guest_readable(buffer, length)) return error(LINUX_EFAULT);
     struct sockaddr_in address;
     if (target && !copy_address_in(target, target_length, &address)) return error(LINUX_EINVAL);
+    if (icmp_owns(index)) return icmp_send(index, (const BYTE *)buffer, length, target ? &address : icmp_peer(index));
     return send_bytes(index, handle, (const char *)buffer, length, flags, target ? &address : NULL);
 }
 
@@ -513,8 +527,10 @@ LONG sys_recvfrom(const DWORD *arguments) {
     if (!guest_writable(buffer, length)) return error(LINUX_EFAULT);
     if (dns_replies[index].pending) return take_dns_reply(index, (char *)buffer, length, from, from_length);
     struct sockaddr_in source;
-    int known;
-    LONG received = receive_bytes(index, handle, (char *)buffer, length, flags, from ? &source : NULL, &known);
+    int known = 1;
+    LONG received = icmp_owns(index) ?
+        icmp_receive(index, (BYTE *)buffer, length, nonblocking(index, flags), &source) :
+        receive_bytes(index, handle, (char *)buffer, length, flags, from ? &source : NULL, &known);
     if (received >= 0 && known) {
         LONG copied = copy_address_out(from, from_length, &source);
         if (copied) return copied;
@@ -553,6 +569,7 @@ LONG sys_sendmsg(const DWORD *arguments) {
     if (result) return result;
     struct sockaddr_in address;
     if (message.name && !copy_address_in(message.name, message.name_length, &address)) return error(LINUX_EINVAL);
+    if (icmp_owns(fd_index)) return icmp_send(fd_index, (const BYTE *)gathered, used, message.name ? &address : icmp_peer(fd_index));
     return send_bytes(fd_index, handle, gathered, used, arguments[2], message.name ? &address : NULL);
 }
 
@@ -573,6 +590,10 @@ LONG sys_recvmsg(const DWORD *arguments) {
     LONG received;
     if (dns_replies[fd_index].pending) {
         received = take_dns_reply(fd_index, scattered, capacity, message.name, message.name ? name_length_pointer : 0);
+    } else if (icmp_owns(fd_index)) {
+        struct sockaddr_in source;
+        received = icmp_receive(fd_index, (BYTE *)scattered, capacity, nonblocking(fd_index, arguments[2]), &source);
+        if (received >= 0 && message.name) copy_address_out(message.name, name_length_pointer, &source);
     } else {
         struct sockaddr_in source;
         int known;
@@ -624,8 +645,12 @@ LONG sys_setsockopt(const DWORD *arguments) {
     DWORD handle, winsock_level, winsock_name;
     LONG result = socket_of(arguments[0], &index, &handle);
     if (result) return result;
-    if (!winsock_option(level, option, &winsock_level, &winsock_name)) return 0;
     LONG value = 0;
+    if (icmp_owns(index)) {
+        if (length < sizeof value || !guest_copy_in(&value, value_pointer, sizeof value)) return 0;
+        return icmp_set_option(index, level, option, value);
+    }
+    if (!winsock_option(level, option, &winsock_level, &winsock_name)) return 0;
     if (length < sizeof value || !guest_copy_in(&value, value_pointer, sizeof value)) return error(LINUX_EINVAL);
     result = simple_call(NETWORK_SET_OPTION, handle, winsock_level, winsock_name, (DWORD)value);
     return result < 0 ? result : 0;
@@ -638,10 +663,12 @@ LONG sys_getsockopt(const DWORD *arguments) {
     LONG result = socket_of(arguments[0], &index, &handle);
     if (result) return result;
     LONG value = 0;
-    if (level == LINUX_SOL_SOCKET && option == LINUX_SO_ERROR) {
+    if (icmp_owns(index) && !(level == LINUX_SOL_SOCKET && option == LINUX_SO_TYPE)) {
+        value = 0;
+    } else if (level == LINUX_SOL_SOCKET && option == LINUX_SO_ERROR) {
         value = -connection_error(handle);
     } else if (level == LINUX_SOL_SOCKET && option == LINUX_SO_TYPE) {
-        value = (LONG)description_at(index)->socket_type;
+        value = (LONG)(description_at(index)->socket_type & LINUX_SOCK_TYPE_MASK);
     } else if (winsock_option(level, option, &winsock_level, &winsock_name)) {
         value = simple_call(NETWORK_GET_OPTION, handle, winsock_level, winsock_name, 0);
         if (value < 0) return value;

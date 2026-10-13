@@ -10,3 +10,4 @@ mount -a 2>/dev/null
 alias ll='ls -lh'
 alias la='ls -A'
 alias neofetch=joltfetch
+alias traceroute='traceroute -I'

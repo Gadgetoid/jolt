@@ -226,7 +226,11 @@ enum linux_control_character {
 #define LINUX_SO_LINGER 13
 #define LINUX_SO_RCVTIMEO 20
 #define LINUX_SO_SNDTIMEO 21
+#define LINUX_IPPROTO_IP 0
+#define LINUX_IPPROTO_ICMP 1
 #define LINUX_IPPROTO_TCP 6
+#define LINUX_IP_TTL 2
+#define LINUX_SOCK_RAW 3
 #define LINUX_TCP_NODELAY 1
 #define LINUX_MSG_OOB 1
 #define LINUX_MSG_PEEK 2

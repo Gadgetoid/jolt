@@ -16,6 +16,9 @@
 #define PAGE_KILOBYTES 4
 #define PAGE_BYTES 4096
 #define NAME_CAPACITY 16
+#define TASK_DIRECTORY "task"
+#define PID_MAX_PATH "sys/kernel/pid_max"
+#define PID_MAX 30000
 #define APM_UNKNOWN 0xff
 #define APM_STATUS_HIGH 0
 #define APM_STATUS_LOW 1
@@ -29,7 +32,8 @@
 
 enum proc_file {
     FILE_NONE, FILE_APM, FILE_JOLT, FILE_STAT, FILE_MEMINFO, FILE_UPTIME, FILE_LOADAVG, FILE_VERSION, FILE_CPUINFO, FILE_MOUNTS,
-    FILE_PROCESS_STAT, FILE_PROCESS_STATUS, FILE_PROCESS_CMDLINE, FILE_PROCESS_COMM, FILE_PROCESS_EXE
+    FILE_PID_MAX, FILE_PROCESS_STAT, FILE_PROCESS_STATM, FILE_PROCESS_STATUS, FILE_PROCESS_CMDLINE, FILE_PROCESS_COMM,
+    FILE_PROCESS_EXE
 };
 
 struct proc_name {
@@ -44,7 +48,7 @@ static const struct proc_name system_files[] = {
 
 static const struct proc_name process_files[] = {
     { "cmdline", FILE_PROCESS_CMDLINE }, { "comm", FILE_PROCESS_COMM }, { "exe", FILE_PROCESS_EXE },
-    { "stat", FILE_PROCESS_STAT }, { "status", FILE_PROCESS_STATUS },
+    { "stat", FILE_PROCESS_STAT }, { "statm", FILE_PROCESS_STATM }, { "status", FILE_PROCESS_STATUS },
 };
 
 #define SYSTEM_FILE_COUNT (sizeof system_files / sizeof system_files[0])
@@ -56,6 +60,7 @@ struct proc_path {
     LONG pid;
     enum proc_file file;
     int valid;
+    int task_listing;
 };
 
 static struct jolt_kernel *kernel(void) {
@@ -114,11 +119,24 @@ static struct proc_path parse(const char *absolute) {
         path.pid = current_pid();
         path.self_link = !rest;
     } else if (!parse_pid(cursor, length, &path.pid)) {
-        path.file = rest ? FILE_NONE : find_file(system_files, SYSTEM_FILE_COUNT, cursor);
+        if (!strcmp(cursor, PID_MAX_PATH)) path.file = FILE_PID_MAX;
+        else path.file = rest ? FILE_NONE : find_file(system_files, SYSTEM_FILE_COUNT, cursor);
         path.valid = path.file != FILE_NONE;
         return path;
     }
     if (!process_exists(path.pid)) return path;
+    if (rest && !strcmp(rest, TASK_DIRECTORY)) {
+        path.task_listing = path.valid = 1;
+        return path;
+    }
+    if (rest && !strncmp(rest, TASK_DIRECTORY "/", strlen(TASK_DIRECTORY) + 1)) {
+        const char *task = rest + strlen(TASK_DIRECTORY) + 1;
+        const char *task_slash = strchr(task, '/');
+        size_t task_length = task_slash ? (size_t)(task_slash - task) : strlen(task);
+        LONG thread;
+        if (!parse_pid(task, task_length, &thread) || thread != path.pid) return path;
+        rest = task_slash ? task_slash + 1 : NULL;
+    }
     if (rest) {
         path.file = find_file(process_files, PROCESS_FILE_COUNT, rest);
         path.valid = path.file != FILE_NONE;
@@ -152,8 +170,19 @@ static int nth_live_process(DWORD index, LONG *pid) {
 int procfs_entry(const char *directory, DWORD position, char *name, BYTE *type) {
     struct proc_path path = parse(directory);
     if (!path.valid) return 0;
+    if (path.task_listing) {
+        if (position) return 0;
+        snprintf(name, NAME_CAPACITY, "%ld", path.pid);
+        *type = LINUX_DT_DIR;
+        return 1;
+    }
     if (!path.root) {
-        if (position >= PROCESS_FILE_COUNT) return 0;
+        if (position == PROCESS_FILE_COUNT) {
+            strcpy(name, TASK_DIRECTORY);
+            *type = LINUX_DT_DIR;
+            return 1;
+        }
+        if (position > PROCESS_FILE_COUNT) return 0;
         strcpy(name, process_files[position].name);
         *type = LINUX_DT_REG;
         return 1;
@@ -235,6 +264,8 @@ static LONG render_process(enum proc_file file, LONG pid, char *buffer, DWORD ca
         return render_process_stat(process, buffer, capacity);
     case FILE_PROCESS_STATUS:
         return render_process_status(process, buffer, capacity);
+    case FILE_PROCESS_STATM:
+        return snprintf(buffer, capacity, "%lu %lu 0 0 0 %lu 0\n", process->pages, process->pages, process->pages);
     case FILE_PROCESS_COMM:
         return snprintf(buffer, capacity, "%s\n", process->name);
     case FILE_PROCESS_CMDLINE: {
@@ -385,6 +416,8 @@ static LONG render_system(enum proc_file file, char *buffer, DWORD capacity) {
         return render_mounts(buffer, capacity);
     case FILE_APM:
         return render_apm(buffer, capacity);
+    case FILE_PID_MAX:
+        return snprintf(buffer, capacity, "%d\n", PID_MAX);
     case FILE_JOLT:
         return render_jolt(buffer, capacity);
     default:

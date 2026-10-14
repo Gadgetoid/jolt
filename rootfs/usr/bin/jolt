@@ -6,6 +6,8 @@ usage() {
     echo "  dm    dark mode"
     echo "  lm    light mode"
     echo "  font N  font height in pixels, 8-32 (default 16)"
+    echo "  face NAME|default  fixed-width font, see jolt fonts (default Courier New)"
+    echo "  fonts  list the fonts in /usr/share/fonts"
     echo "  theme classic|solarized  colour theme"
     echo "  mount [CEPATH DIR]  map a CE folder into the tree, or list mounts"
     echo "  umount DIR  remove a mount"
@@ -62,6 +64,18 @@ case "$1" in
         esac
         if [ "$2" -lt 8 ] || [ "$2" -gt 32 ]; then usage >&2; exit 1; fi
         osc "font=$2"
+        ;;
+    face)
+        if [ $# -ne 2 ] || [ -z "$2" ] || [ ${#2} -gt 31 ]; then usage >&2; exit 1; fi
+        osc "face=$2"
+        ;;
+    fonts)
+        echo "Courier New (built in, default)"
+        for file in /usr/share/fonts/*.ttf; do
+            [ -f "$file" ] || continue
+            name=${file##*/}
+            echo "${name%%[-.]*}"
+        done | sort -u
         ;;
     theme)
         case "$2" in

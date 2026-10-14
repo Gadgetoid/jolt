@@ -1,0 +1,6 @@
+jolt face LiberationMono
+jolt font 12
+jolt fonts
+printf '\\033[1mbold\\033[0m plain |||| iiii WWWW 0O1lI {}[]()\\n'
+jolt face NoSuchFont
+@wait 1500

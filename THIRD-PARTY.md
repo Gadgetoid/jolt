@@ -15,6 +15,8 @@ JoLT's own source is MIT licensed (see LICENSE). Release builds include or are b
 | LibreSSL | 4.3.3 | OpenSSL, SSLeay and ISC | TLS for links |
 | curl | 8.22.0 | curl (MIT-style) | `/usr/bin/curl` |
 | Mbed TLS | 3.6.7 | Apache-2.0 OR GPL-2.0-or-later | TLS for curl |
+| DejaVu Sans Mono | 2.37 | Bitstream Vera licence, changes public domain | `/usr/share/fonts/DejaVuSansMono*.ttf` |
+| Liberation Mono | 2.1.5 | OFL-1.1 | `/usr/share/fonts/LiberationMono*.ttf` |
 | Mozilla CA certificates (via curl.se) | 2026-09-25 | MPL-2.0 | `/etc/ssl/cert.pem`, trusted roots for curl and links |
 | ncurses | 6.6 | X11 (MIT-style) | Terminal library linked into Vim, nano, Bash, ncdu, htop and frotz |
 | Vim | 9.2.1178 | Vim licence | `/usr/bin/vim` |

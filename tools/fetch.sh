@@ -63,6 +63,12 @@ fetch mbedtls-3.6.7.tar.bz2 https://github.com/Mbed-TLS/mbedtls/releases/downloa
     a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6
 fetch libressl-4.3.3.tar.gz https://cdn.openbsd.org/pub/OpenBSD/LibreSSL/libressl-4.3.3.tar.gz \
     ff97c432457f349e6ba3d416ab903bc7468f1436f0f32efe5fff808de292c7b8
+fetch dejavu-fonts-ttf-2.37.tar.bz2 \
+    https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 \
+    fa9ca4d13871dd122f61258a80d01751d603b4d3ee14095d65453b4e846e17d7
+fetch liberation-fonts-ttf-2.1.5.tar.gz \
+    https://github.com/liberationfonts/liberation-fonts/files/7261482/liberation-fonts-ttf-2.1.5.tar.gz \
+    7191c669bf38899f73a2094ed00f7b800553364f90e2637010a69c0e268f25d0
 fetch cacert-2026-09-25.pem https://curl.se/ca/cacert-2026-09-25.pem \
     a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505
 zork=https://raw.githubusercontent.com/historicalsource

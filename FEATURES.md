@@ -58,6 +58,9 @@ NETWORK SUPPORT??
 ### Terminal
 
 - Colour and bold rendering - DONE (classic and Solarized themes)
+- Font choice - DONE (TrueType from /usr/share/fonts via AddFontResource: DejaVu Sans Mono, Liberation Mono; CE fonts by name)
+- Bitmap fonts drawn by JoLT (Terminus, Spleen) if TrueType is too ragged at small sizes
+- Windows key: Win+key shortcuts, a second bank of hot keys, or an on-screen overlay (memory, programs, theme, font)
 - ncurses with a minimal terminfo entry - DONE (ncurses 6.6, built-in fallbacks, TERM=xterm-256color)
 - ptys (/dev/ptmx, /dev/pts/*)
 - dvtm + abduco (multiplexer)

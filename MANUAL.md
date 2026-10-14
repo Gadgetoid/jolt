@@ -71,6 +71,8 @@ jolt COMMAND [ARGUMENTS]
 | `jolt lm` | Light mode |
 | `jolt theme classic\|solarized` | Colour theme |
 | `jolt font N` | Font height in pixels, 8 to 32 (default 16) |
+| `jolt face NAME\|default` | Fixed-width font (default Courier New) |
+| `jolt fonts` | List the fonts that come with JoLT |
 | `jolt mount` | List CE folders mounted into the Linux tree |
 | `jolt mount CEPATH DIR` | Mount a CE folder at `DIR` |
 | `jolt umount DIR` | Remove a mount |
@@ -108,6 +110,18 @@ Windowed mode (`jolt win`) keeps the taskbar and adds a scroll bar you can drag 
 Smaller fonts fit more on screen. At 16 px the full screen is 79x15. At 12 px it's 106x20:
 
 ![12 px font](docs/manual/style-font12.png)
+
+### Fonts
+
+JoLT uses CE's Courier New unless you pick another fixed-width font. It comes with DejaVu Sans Mono and Liberation Mono:
+
+```sh
+jolt fonts
+jolt face DejaVuSansMono
+jolt face default
+```
+
+Names work with or without spaces, so `jolt face "DejaVu Sans Mono"` does the same. To add a font, copy its regular and bold `.ttf` files into `/usr/share/fonts`, named so they start with the font's name without spaces (`DejaVuSansMono.ttf`, `DejaVuSansMono-Bold.ttf`). Fonts installed in CE's `\Windows\Fonts` work too. JoLT only loads the font you pick, and CE has no anti-aliasing, so well-hinted fonts look best at small sizes. A name that isn't a fixed-width font leaves the current one in place.
 
 ## System information
 

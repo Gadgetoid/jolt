@@ -10,6 +10,7 @@
 #include "kernel.h"
 #include "sound.h"
 #include "tty.h"
+#include "fonts.h"
 
 #define ORIGIN_X 2
 #define ORIGIN_Y 0
@@ -22,6 +23,7 @@
 #define JOLT_OSC_COMMAND 7770
 #define OSC_CAPACITY (JOLT_GUEST_PATH + 16)
 #define FONT_FACE L"Courier New"
+#define NOTICE_CAPACITY 128
 #define TASKBAR_CLASS L"HHTaskBar"
 #define WINDOWED_STYLE (WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_VSCROLL)
 #define FULLSCREEN_STYLE (WS_VISIBLE | WS_POPUP)
@@ -32,6 +34,11 @@ struct display_state {
     VTerm *terminal;
     VTermScreen *screen;
     HFONT font, bold_font;
+    WCHAR family[LF_FACESIZE];
+    int face_missing;
+    int writing;
+    char notice[NOTICE_CAPACITY];
+    DWORD notice_length;
     int cell_width, cell_height;
     int cursor_visible;
     int scroll;
@@ -367,9 +374,27 @@ void display_output(const char *bytes, DWORD count) {
         view.splash = NULL;
         invalidate_all();
     }
+    view.writing = 1;
     vterm_input_write(view.terminal, bytes, count);
+    view.writing = 0;
+    if (view.notice_length) {
+        DWORD length = view.notice_length;
+        view.notice_length = 0;
+        vterm_input_write(view.terminal, view.notice, length);
+    }
     vterm_screen_flush_damage(view.screen);
     update_scrollbar();
+}
+
+void display_notice(const char *text) {
+    DWORD length = (DWORD)strlen(text);
+    if (!view.writing) {
+        display_output(text, length);
+        return;
+    }
+    if (length > sizeof view.notice - view.notice_length) length = sizeof view.notice - view.notice_length;
+    memcpy(view.notice + view.notice_length, text, length);
+    view.notice_length += length;
 }
 
 void display_drain_tty(void) {
@@ -384,38 +409,60 @@ void display_drain_tty(void) {
     display_output(buffer, count);
 }
 
-static HFONT create_font(int height, int weight) {
+static HFONT create_font(int height, int weight, const WCHAR *family) {
     LOGFONTW font;
     memset(&font, 0, sizeof font);
     font.lfHeight = height;
     font.lfWeight = weight;
     font.lfCharSet = DEFAULT_CHARSET;
     font.lfPitchAndFamily = FIXED_PITCH;
-    wcscpy(font.lfFaceName, FONT_FACE);
+    wcscpy(font.lfFaceName, family);
     return CreateFontIndirectW(&font);
 }
 
-static void load_fonts(void) {
-    HFONT regular = create_font(view.settings.font_height, FW_NORMAL);
-    HFONT bold = create_font(view.settings.font_height, FW_BOLD);
-    if (!regular || !bold) {
+static int measure_font(HFONT font, int require_fixed, TEXTMETRICW *metrics) {
+    HDC dc = GetDC(view.window);
+    HGDIOBJ previous = SelectObject(dc, font);
+    int measured = GetTextMetricsW(dc, metrics) && metrics->tmAveCharWidth > 0 && metrics->tmHeight > 0;
+    SelectObject(dc, previous);
+    ReleaseDC(view.window, dc);
+    return measured && (!require_fixed || !(metrics->tmPitchAndFamily & TMPF_FIXED_PITCH));
+}
+
+static int create_fonts(const WCHAR *family, int require_fixed) {
+    HFONT regular = create_font(view.settings.font_height, FW_NORMAL, family);
+    HFONT bold = create_font(view.settings.font_height, FW_BOLD, family);
+    TEXTMETRICW metrics;
+    if (!regular || !bold || !measure_font(regular, require_fixed, &metrics)) {
         if (regular) DeleteObject(regular);
         if (bold) DeleteObject(bold);
-        return;
+        return 0;
     }
     if (view.font) DeleteObject(view.font);
     if (view.bold_font) DeleteObject(view.bold_font);
     view.font = regular;
     view.bold_font = bold;
+    view.cell_width = metrics.tmAveCharWidth;
+    view.cell_height = metrics.tmHeight;
+    wcscpy(view.family, family);
+    return 1;
+}
+
+static int resolve_face(WCHAR *family) {
     HDC dc = GetDC(view.window);
-    HGDIOBJ previous = SelectObject(dc, view.font);
-    TEXTMETRICW metrics;
-    if (GetTextMetricsW(dc, &metrics) && metrics.tmAveCharWidth > 0 && metrics.tmHeight > 0) {
-        view.cell_width = metrics.tmAveCharWidth;
-        view.cell_height = metrics.tmHeight;
-    }
-    SelectObject(dc, previous);
+    int found = fonts_resolve(dc, view.settings.face, family);
     ReleaseDC(view.window, dc);
+    return found;
+}
+
+static void load_fonts(void) {
+    WCHAR family[LF_FACESIZE];
+    view.face_missing = 0;
+    if (view.settings.face[0]) {
+        if (resolve_face(family) && create_fonts(family, 1)) return;
+        view.face_missing = 1;
+    }
+    create_fonts(FONT_FACE, 0);
 }
 
 static void vterm_colour(VTermColor *colour, COLORREF value) {
@@ -498,7 +545,7 @@ static void apply_layout(void) {
 }
 
 void display_apply(const struct display_settings *settings) {
-    int font_changed = settings->font_height != view.settings.font_height;
+    int font_changed = settings->font_height != view.settings.font_height || strcmp(settings->face, view.settings.face);
     view.settings = *settings;
     if (font_changed) load_fonts();
     apply_theme();
@@ -542,6 +589,7 @@ void display_destroy(void) {
     if (view.foreground_brush) DeleteObject(view.foreground_brush);
     if (view.background_brush) DeleteObject(view.background_brush);
     if (view.terminal) vterm_free(view.terminal);
+    fonts_release();
     scrollback_free();
     memset(&view, 0, sizeof view);
 }
@@ -583,10 +631,19 @@ DWORD display_screen_text(char *buffer, DWORD capacity) {
 }
 
 DWORD display_describe(char *buffer, DWORD capacity) {
-    int length = snprintf(buffer, capacity, "theme=%s dark=%d fullscreen=%d font=%d foreground=%06lx background=%06lx\r\n",
-        theme_label(view.settings.theme), view.settings.dark, view.settings.fullscreen, view.settings.font_height,
+    char family[LF_FACESIZE];
+    size_t index = 0;
+    for (; view.family[index] && index + 1 < sizeof family; index++) family[index] = (char)view.family[index];
+    family[index] = 0;
+    int length = snprintf(buffer, capacity,
+        "theme=%s dark=%d fullscreen=%d font=%d face=%s foreground=%06lx background=%06lx\r\n",
+        theme_label(view.settings.theme), view.settings.dark, view.settings.fullscreen, view.settings.font_height, family,
         (unsigned long)view.theme->foreground, (unsigned long)view.theme->background);
     return length > 0 ? (DWORD)length : 0;
+}
+
+int display_face_missing(void) {
+    return view.face_missing;
 }
 
 void display_close(void) {

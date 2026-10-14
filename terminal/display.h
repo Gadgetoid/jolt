@@ -11,6 +11,7 @@ struct display_settings {
     int font_height;
     enum theme_name theme;
     enum hotkey_mode hotkeys;
+    char face[LF_FACESIZE];
 };
 
 typedef void (*display_command_handler)(const char *command);
@@ -19,6 +20,7 @@ int display_create(HWND window, const struct display_settings *settings, display
 void display_destroy(void);
 void display_apply(const struct display_settings *settings);
 void display_output(const char *bytes, DWORD count);
+void display_notice(const char *text);
 void display_drain_tty(void);
 void display_paint(void);
 void display_resize(void);
@@ -33,3 +35,4 @@ int display_splash_loaded(void);
 void display_close(void);
 void display_key(VTermKey key, VTermModifier modifiers);
 void display_restore_taskbar(void);
+int display_face_missing(void);

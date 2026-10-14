@@ -144,7 +144,6 @@ static void run_command(const char *command) {
     else if (!strncmp(command, "shortcut=", strlen("shortcut="))) desktop_shortcut(command + strlen("shortcut="));
     else if (!strcmp(command, "keys")) keyboard_start_log();
     else settings_command(command);
-    keyboard_set_hotkeys(hotkeys_engaged(settings_current()));
 }
 
 static int locate_folder(void) {

@@ -4,6 +4,8 @@
 #include <string.h>
 #include "settings.h"
 #include "session.h"
+#include "keyboard.h"
+#include "hotkeys.h"
 
 #define SETTINGS_FILE L"jolt.cfg"
 #define SETTINGS_CAPACITY 256
@@ -13,10 +15,6 @@
 
 static struct display_settings current = { 0, 0, FONT_DEFAULT, THEME_CLASSIC, HOTKEYS_FULLSCREEN };
 static const char *const hotkey_modes[] = { "off", "fullscreen", "always" };
-
-const struct display_settings *settings_current(void) {
-    return &current;
-}
 
 static int valid_font(int height) {
     return height >= FONT_MINIMUM && height <= FONT_MAXIMUM;
@@ -78,6 +76,7 @@ void settings_load(struct display_settings *settings) {
 static int apply_command(const char *command) {
     if (!strcmp(command, "fullscreen")) current.fullscreen = 1;
     else if (!strcmp(command, "window")) current.fullscreen = 0;
+    else if (!strcmp(command, "toggle")) current.fullscreen = !current.fullscreen;
     else if (!strcmp(command, "dark")) current.dark = 1;
     else if (!strcmp(command, "light")) current.dark = 0;
     else if (!strncmp(command, "font=", 5) && valid_font(atoi(command + 5))) current.font_height = atoi(command + 5);
@@ -88,7 +87,9 @@ static int apply_command(const char *command) {
 }
 
 void settings_command(const char *command) {
-    if (!apply_command(command)) return;
-    display_apply(&current);
-    save();
+    if (apply_command(command)) {
+        display_apply(&current);
+        save();
+    }
+    keyboard_set_hotkeys(hotkeys_engaged(&current));
 }

@@ -17,6 +17,7 @@ usage() {
     echo "  help  this help (also -h)"
     echo "Shift+PgUp/PgDn or Shift+Up/Down scroll back through output."
     echo "Ctrl+1..Ctrl+0 send F1..F10, Ctrl+- and Ctrl+= send F11 and F12."
+    echo "Ctrl+Shift+F switches between full screen and windowed."
     echo "/dev/clipboard reads and writes the CE clipboard."
     echo "Settings are remembered. Type 'exit' to close JoLT."
 }

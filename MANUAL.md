@@ -126,6 +126,7 @@ Smaller fonts fit more on screen. At 16 px the full screen is 79x15. At 12 px it
 | Any other key | Jump back to the live screen |
 | Ctrl+1 to Ctrl+0 | F1 to F10 |
 | Ctrl+- / Ctrl+= | F11 / F12 |
+| Ctrl+Shift+F | Switch between full screen and windowed, even inside a program |
 | Ctrl+C | Interrupt the running program |
 | Ctrl+Z | Suspend the running program (`fg` to resume) |
 | Ctrl+D | End of input; at an empty prompt, closes the shell |
@@ -148,6 +149,15 @@ The row of application buttons above the keyboard (Inbox, Calendar, Contacts and
 ```
 
 When pressed, the command is typed into JoLT followed by Enter, so it runs in whatever is in front: the shell, or a program that's waiting for input.
+
+A command starting with `@` changes a terminal setting instead, so it works inside vim or htop too:
+
+```
+1 @toggle
+2 @font=12
+```
+
+The settings are `@toggle` (full screen or windowed), `@fullscreen`, `@window`, `@dark`, `@light`, `@font=N` and `@theme=NAME`. With `jolt hotkeys fullscreen`, the buttons stop working once you leave full screen, so use `always` if you want a button to switch back.
 
 | Number | Button | Number | Button |
 | --- | --- | --- | --- |

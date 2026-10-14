@@ -1,5 +1,7 @@
 # Commands for the HP hot keys, typed into JoLT with Enter.
-# One per line: HOTKEY COMMAND. While JoLT has the hot keys, unassigned ones
+# One per line: HOTKEY COMMAND. A command starting with @ changes a terminal
+# setting instead, even inside an app: @toggle @fullscreen @window @dark
+# @light @font=N @theme=NAME. While JoLT has the hot keys, unassigned ones
 # do nothing; unassigned media keys keep their usual action.
 #  1 Internet Explorer   5 Tasks          9 Pocket Access
 #  2 Inbox               6 Calendar      10 Pocket Excel
@@ -8,6 +10,7 @@
 # Media keys: player volume-up volume-down play-pause
 # When: jolt hotkeys off|fullscreen|always (default fullscreen)
 #
+# 1 @toggle
 # 6 cal
 # 5 htop
 # 4 joltfetch

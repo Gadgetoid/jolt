@@ -59,26 +59,40 @@ user=${owner:-${USER:-root}}
 title="$user@${device:-jornada}"
 underline=${title//?/-}
 
+set -- $(stty size 2>/dev/null)
+limit=$((${1:-24} - 1))
+columns=${2:-80}
+printed=0
+
 row() {
+    [ "$printed" -ge "$limit" ] && return
+    printed=$((printed + 1))
     printf "$green%-31s$reset" "$1"
-    [ -n "$2" ] && printf "$green$bold%s$reset: %s" "$2" "$3"
+    if [ -n "$2" ]; then
+        value=$3
+        room=$((columns - 31 - ${#2} - 3))
+        [ "${#value}" -gt "$room" ] && value=${value:0:$room}
+        printf "$green$bold%s$reset: %s" "$2" "$value"
+    fi
     printf '\n'
 }
 
 printf "$green%-31s$bold%s$reset\n" '                  _   _______' "$title"
 printf "$green%-31s$reset%s\n" ' _______   ___   | | |__   __|' "$underline"
-row '|__    /  / _ \  | |    | |' "OS" "JoLT $version on Windows CE $ce_version build $ce_build"
+printed=2
+row '|__    /  / _ \  | |    | |' "OS" "JoLT $version, Windows CE $ce_version.$ce_build"
 row '   /  /_ | (_) | | |__  | |' "Host" "$host"
 row '  /_  _/  \___/  |____| |_|' "Kernel" "armv4l $version-jolt"
 row '    / /' "Uptime" "$uptime_text"
 row '   //' "Packages" "$applets applets, $programs programs"
 row '  /' "Shell" "ash (BusyBox)"
-row '' "Terminal" "JoLT-Term $terminal, $TERM"
-row '' "Display" "${display%x*} at ${display##*x}-bit"
-row '' "CPU" "$processor ($bogomips BogoMIPS)"
+row '' "CPU" "${processor%% (*}, ${bogomips%.*} BogoMIPS"
 row '' "Memory" "$(((memory_total - memory_available) / 1024)) MiB / $((memory_total / 1024)) MiB"
 row '' "Storage" "$(((card_kb - card_free_kb) / 1024)) MiB / $((card_kb / 1024)) MiB"
 row '' "Power" "$power, $percent"
+row '' "Display" "${display%x*} at ${display##*x}-bit"
+row '' "Terminal" "JoLT-Term $terminal, $TERM"
+[ "$printed" -ge "$limit" ] && exit 0
 printf '%31s' ''
 for colour in 0 1 2 3 4 5 6 7; do printf '\033[4%sm   ' "$colour"; done
 printf "$reset\n"

@@ -5,12 +5,14 @@
 #include "hotkeys.h"
 #include "session.h"
 #include "tty.h"
+#include "settings.h"
 
 #define HOTKEYS_FILE L"root\\etc\\hotkeys"
 #define HOTKEYS_CAPACITY 4096
 #define SHELL_KEYS L"Software\\Microsoft\\Shell\\Keys\\"
 #define SHELL_KEY_PREFIX 0x40
 #define SHELL_KEY_CAPACITY 64
+#define SETTING_PREFIX '@'
 
 struct button {
     DWORD key;
@@ -92,6 +94,10 @@ int hotkeys_press(WPARAM key) {
     if (!button) return 0;
     static char text[HOTKEYS_CAPACITY], command[HOTKEYS_CAPACITY];
     if (read_hotkeys(text) && find_command(text, button->name, command)) {
+        if (command[0] == SETTING_PREFIX) {
+            settings_command(command + 1);
+            return 1;
+        }
         tty_type(command, (DWORD)strlen(command));
         tty_type("\r", 1);
     } else if (button->passes_through) {

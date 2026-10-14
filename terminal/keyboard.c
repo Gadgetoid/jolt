@@ -6,6 +6,7 @@
 #include "session.h"
 #include "tty.h"
 #include "hotkeys.h"
+#include "settings.h"
 
 #define ASCII_ESCAPE 27
 #define ASCII_BACKSPACE 8
@@ -87,6 +88,19 @@ static int scrollback_key(WPARAM key) {
     }
 }
 
+static void discard_characters(void) {
+    MSG pending;
+    while (PeekMessageW(&pending, session.window, WM_CHAR, WM_CHAR, PM_REMOVE)) {}
+}
+
+static int terminal_shortcut(WPARAM key) {
+    if (GetKeyState(VK_CONTROL) >= 0 || GetKeyState(VK_SHIFT) >= 0) return 0;
+    if (key != 'F') return 0;
+    discard_characters();
+    settings_command("toggle");
+    return 1;
+}
+
 static int is_modifier(WPARAM key) {
     return key == VK_SHIFT || key == VK_CONTROL || key == VK_MENU;
 }
@@ -98,6 +112,7 @@ void keyboard_key_down(WPARAM key) {
     }
     if (key == VK_LWIN) return;
     if (hotkeys_press(key)) return;
+    if (terminal_shortcut(key)) return;
     WPARAM layer_key = alt_layer_key(key);
     int alt_consumed = layer_key != key;
     key = layer_key;
@@ -111,9 +126,8 @@ void keyboard_key_down(WPARAM key) {
     int chorded = GetKeyState(VK_CONTROL) < 0 || alt_held();
     function = chorded ? alternate_function_number(key) : 0;
     if (function) {
-        MSG pending;
         display_key(VTERM_KEY_FUNCTION(function), VTERM_MOD_NONE);
-        while (PeekMessageW(&pending, session.window, WM_CHAR, WM_CHAR, PM_REMOVE)) {}
+        discard_characters();
         return;
     }
     for (size_t index = 0; index < sizeof key_mappings / sizeof key_mappings[0]; index++) {

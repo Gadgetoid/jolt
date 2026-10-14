@@ -22,7 +22,7 @@ mkdir -p "$host_dir"
         --with-build-cc=cc --without-shared --with-normal --without-debug --without-profile \
         --without-cxx --without-cxx-binding --without-ada --without-progs --without-tests --without-manpages \
         --without-pkg-config --disable-widec --enable-overwrite --disable-database --disable-home-terminfo \
-        --with-fallbacks=xterm-256color,xterm,vt102,vt100,linux,ansi --disable-stripping \
+        --with-fallbacks=xterm-256color,xterm,vt102,vt100,linux,ansi,dvtm,dvtm-256color --disable-stripping \
         --with-tic-path="$host_dir/progs/tic" --with-infocmp-path="$host_dir/progs/infocmp" \
         > configure.log
     make -j"$jobs" libs > make.log

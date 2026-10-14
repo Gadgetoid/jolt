@@ -4,6 +4,7 @@
 #include "serial.h"
 #include "kernel.h"
 
+#define DRAIN_ATTEMPTS 64
 #define READ_WAIT_MILLISECONDS 20
 #define IDLE_MILLISECONDS 1000
 #define STOP_MILLISECONDS 3000
@@ -123,9 +124,16 @@ static void open_port(int port) {
     set_state(serial, SERIAL_OPEN, 0);
 }
 
+static int transmit(int port);
+
+static void drain_port(int port) {
+    for (int attempt = 0; attempt < DRAIN_ATTEMPTS && transmit(port); attempt++) {}
+}
+
 static void close_port(int port) {
     if (handles[port]) {
-        PurgeComm(handles[port], PURGE_RXCLEAR | PURGE_TXCLEAR);
+        drain_port(port);
+        PurgeComm(handles[port], PURGE_RXCLEAR);
         CloseHandle(handles[port]);
         handles[port] = NULL;
     }
@@ -186,6 +194,7 @@ static int service_port(int port) {
     if (wanted && !handles[port] && serial->state != SERIAL_FAILED) open_port(port);
     if (!wanted && (handles[port] || serial->state != SERIAL_CLOSED)) close_port(port);
     if (!handles[port]) return 0;
+    if (serial->state == SERIAL_OPENING) set_state(serial, SERIAL_OPEN, 0);
     update_control(port);
     int moved = transmit(port);
     moved |= receive(port);

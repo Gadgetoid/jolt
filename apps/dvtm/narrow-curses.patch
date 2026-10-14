@@ -1,0 +1,11 @@
+--- a/dvtm.c
++++ b/dvtm.c
+@@ -364,7 +364,7 @@
+ 			pos += wcwidth(wbuf[i]);
+ 			if (pos > maxwidth)
+ 				break;
+-			addnwstr(wbuf+i, 1);
++			addch(wbuf[i] < 128 ? (chtype)wbuf[i] : (chtype)'?');
+ 		}
+ 
+ 		clrtoeol();

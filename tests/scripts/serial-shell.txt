@@ -1,0 +1,6 @@
+stty -F /dev/ttyS3 115200 raw -echo
+echo SHELL-MODE > /dev/ttyS3
+timeout 2 cat /dev/ttyS3 > /dev/null
+timeout 30 jolt serial-shell /dev/ttyS3; echo "serial shell status $?"
+cat /tmp/serial.out
+exit 0

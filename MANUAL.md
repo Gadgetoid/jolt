@@ -81,6 +81,7 @@ jolt COMMAND [ARGUMENTS]
 | `jolt shortcut [-s] NAME COMMAND` | Desktop shortcut that opens JoLT and runs `COMMAND` (`-s`: Start menu) |
 | `jolt hotkeys off\|fullscreen\|always` | When the HP hot keys run commands from `/etc/hotkeys` |
 | `jolt keys` | Show the next 20 keyboard messages JoLT receives |
+| `jolt serial-shell [DEVICE [SPEED]]` | Run a login shell on a serial port, see [A shell over serial](#a-shell-over-serial) |
 | `jolt help` | Show help (also `-h`, `--help`) |
 
 Examples:
@@ -249,6 +250,7 @@ These live in `/usr/bin`:
 | `lua` | Lua 5.4 |
 | `jq` | JSON processor |
 | `htop` | Process viewer (Ctrl+0 quits) |
+| `dvtm` | Several shells in one screen, see [Windows with dvtm](#windows-with-dvtm) |
 | `ncdu` | Disk usage browser, needs more than 15 rows: use `jolt font 12` |
 | `frotz` | Z-machine interpreter for text adventures |
 | `zork` | Zork I, II or III: `zork 2` |
@@ -259,6 +261,21 @@ These live in `/usr/bin`:
 | --- | --- |
 | ![vim](docs/manual/vim.png) | ![links](docs/manual/links.png) |
 | ![MicroPython](docs/manual/micropython.png) | ![Zork](docs/manual/zork.png) |
+
+## Windows with dvtm
+
+`dvtm` splits the screen into several terminals, each with its own shell. Commands start with Ctrl+G:
+
+| Keys | Action |
+| --- | --- |
+| Ctrl+G c | New window |
+| Ctrl+G j / Ctrl+G k | Next / previous window |
+| Ctrl+G Enter | Swap the current window into the main area |
+| Ctrl+G f / g / b / m | Layout: tiled, grid, bottom stack, full screen |
+| Ctrl+G x x | Close the current window |
+| Ctrl+G q q | Quit dvtm |
+
+JoLT has 4 pseudo terminals, so dvtm can have up to 4 windows. Use a smaller font (`jolt font 12`) to give each one more room.
 
 ## BusyBox commands
 
@@ -366,6 +383,7 @@ Line endings and text encoding are converted for you.
 | `/dev/tty`, `/dev/console` | The terminal |
 | `/dev/clipboard` | CE clipboard |
 | `/dev/ttyS0` to `/dev/ttyS3` | Serial ports, see [Serial and IR](#9-serial-and-ir) |
+| `/dev/ptmx`, `/dev/pts/0` to `/dev/pts/3` | Pseudo terminals, for `dvtm`, `script` and `jolt serial-shell` |
 
 `/proc` has `cpuinfo`, `meminfo`, `uptime`, `loadavg`, `mounts`, `apm` (battery), `version`, `jolt` (device details) and a folder per process.
 
@@ -424,6 +442,17 @@ microcom -s 115200 /dev/ttyS0
 ```
 
 Exit `microcom` with Ctrl+X. `stty -F /dev/ttyS0` shows and changes port settings.
+
+## A shell over serial
+
+`jolt serial-shell` runs a login shell on a serial port, so you can use the Jornada from another computer's terminal:
+
+```sh
+jolt serial-shell                       # /dev/ttyS0 at 115200
+jolt serial-shell /dev/ttyS0 38400 &    # in the background, keep using JoLT
+```
+
+On the other end, connect at the same speed, for example `picocom -b 115200 /dev/ttyUSB0`. The shell has a proper terminal: Ctrl+C, job control and full-screen programs work. It ends when you type `exit`; run it again for another session.
 
 # 10. Limitations
 

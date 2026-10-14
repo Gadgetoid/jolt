@@ -1,0 +1,19 @@
+dvtm
+@wait 4000
+echo inside-$((6*7))
+@wait 2000
+htop
+@wait 5000
+q\c
+@wait 2000
+echo htop-status-$?
+@wait 2000
+\x07c\c
+@wait 3000
+ls /dev/pts | wc -l
+@wait 2000
+\x07qq\c
+@wait 4000
+echo "after dvtm $?"
+ls /dev/pts | wc -l
+exit 0

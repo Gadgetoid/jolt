@@ -1,0 +1,12 @@
+dvtm
+@wait 4000
+echo inside-$((6*7))
+@wait 2000
+tty
+@wait 2000
+echo term=$TERM
+@wait 2000
+\x07c\c
+@wait 4000
+echo second-window
+@wait 3000

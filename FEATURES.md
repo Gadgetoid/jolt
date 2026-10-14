@@ -43,7 +43,7 @@ NETWORK SUPPORT??
 
 - /dev/ttyS0 backed by CE COM1:, termios baud/parity mapped to DCB - DONE (/dev/ttyS0-3 = COM1:-COM4:, JoLT-Term owns the ports; raw, no line discipline; data path untested until the emulator exposes COM4)
 - BusyBox microcom - DONE
-- Shell on a serial port (needs the line discipline on serial devices)
+- Shell on a serial port - DONE (`jolt serial-shell`: BusyBox script relays the port to a pty; serial close now drains output, reopen race fixed)
 - picocom
 
 ### Networking
@@ -63,7 +63,8 @@ NETWORK SUPPORT??
 - Windows key: Win+key shortcuts, a second bank of hot keys, or an on-screen overlay (memory, programs, theme, font)
 - ncurses with a minimal terminfo entry - DONE (ncurses 6.6, built-in fallbacks, TERM=xterm-256color)
 - ptys (/dev/ptmx, /dev/pts/*) - DONE (4 ptys; line discipline shared by console and ptys in common/tty.c; controlling terminals, TIOCSCTTY, hangup on master close; BusyBox script)
-- dvtm + abduco (multiplexer)
+- dvtm (multiplexer) - DONE (0.15 over narrow ncurses; dvtm and dvtm-256color terminfo built into ncurses fallbacks)
+- abduco (needs AF_UNIX sockets bound to paths)
 
 ### Audio
 

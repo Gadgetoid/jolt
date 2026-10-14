@@ -18,7 +18,8 @@ JoLT's own source is MIT licensed (see LICENSE). Release builds include or are b
 | DejaVu Sans Mono | 2.37 | Bitstream Vera licence, changes public domain | `/usr/share/fonts/DejaVuSansMono*.ttf` |
 | Liberation Mono | 2.1.5 | OFL-1.1 | `/usr/share/fonts/LiberationMono*.ttf` |
 | Mozilla CA certificates (via curl.se) | 2026-09-25 | MPL-2.0 | `/etc/ssl/cert.pem`, trusted roots for curl and links |
-| ncurses | 6.6 | X11 (MIT-style) | Terminal library linked into Vim, nano, Bash, ncdu, htop and frotz |
+| dvtm | 0.15 | MIT | `/usr/bin/dvtm`, with `apps/dvtm/narrow-curses.patch` |
+| ncurses | 6.6 | X11 (MIT-style) | Terminal library linked into Vim, nano, Bash, ncdu, htop, frotz and dvtm |
 | Vim | 9.2.1178 | Vim licence | `/usr/bin/vim` |
 | Lua | 5.4.7 | MIT | `/usr/bin/lua` |
 | MicroPython | 1.29.0 | MIT | `/usr/bin/micropython` |

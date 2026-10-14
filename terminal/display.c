@@ -55,8 +55,8 @@ struct display_state {
 
 static struct display_state view;
 
-static struct jolt_kernel *kernel(void) {
-    return jolt.kernel;
+static struct jolt_tty *console(void) {
+    return &jolt.kernel->ttys[JOLT_CONSOLE];
 }
 
 static RECT cell_bounds(int start_row, int end_row, int start_column, int end_column) {
@@ -196,8 +196,8 @@ static void paint_cells(HDC dc, const RECT *area) {
     int last_column = (area->right - ORIGIN_X + view.cell_width - 1) / view.cell_width;
     if (first_row < 0) first_row = 0;
     if (first_column < 0) first_column = 0;
-    if (last_row > kernel()->rows) last_row = kernel()->rows;
-    if (last_column > kernel()->columns) last_column = kernel()->columns;
+    if (last_row > console()->rows) last_row = console()->rows;
+    if (last_column > console()->columns) last_column = console()->columns;
     INT advances[RUN_LIMIT];
     for (int index = 0; index < RUN_LIMIT; index++) advances[index] = view.cell_width;
     SetBkMode(dc, OPAQUE);
@@ -228,7 +228,7 @@ void display_paint(void) {
         paint_splash(dc, &paint.rcPaint);
     } else {
         paint_cells(dc, &paint.rcPaint);
-        RECT grid = cell_bounds(0, kernel()->rows, 0, kernel()->columns);
+        RECT grid = cell_bounds(0, console()->rows, 0, console()->columns);
         ExcludeClipRect(dc, grid.left, grid.top, grid.right, grid.bottom);
         FillRect(dc, &paint.rcPaint, view.background_brush);
     }
@@ -237,7 +237,7 @@ void display_paint(void) {
 
 static void update_scrollbar(void) {
     if (view.settings.fullscreen) return;
-    int count = scrollback_count(), rows = kernel()->rows;
+    int count = scrollback_count(), rows = console()->rows;
     if (count == view.shown_count && rows == view.shown_rows && view.scroll == view.shown_scroll) return;
     view.shown_count = count;
     view.shown_rows = rows;
@@ -266,7 +266,7 @@ void display_scroll_by(int lines) {
 }
 
 int display_page_lines(void) {
-    return kernel()->rows > 1 ? kernel()->rows - 1 : 1;
+    return console()->rows > 1 ? console()->rows - 1 : 1;
 }
 
 void display_scrollbar(WPARAM request) {
@@ -398,14 +398,14 @@ void display_notice(const char *text) {
 }
 
 void display_drain_tty(void) {
-    struct jolt_kernel *k = kernel();
+    struct jolt_tty *tty = console();
     char buffer[JOLT_TTY_SIZE];
-    DWORD consumed = (DWORD)k->tty_read;
-    DWORD count = (DWORD)k->tty_written - consumed;
+    DWORD consumed = (DWORD)tty->output_read;
+    DWORD count = (DWORD)tty->output_written - consumed;
     if (!count) return;
     if (count > sizeof buffer) count = sizeof buffer;
-    for (DWORD index = 0; index < count; index++) buffer[index] = k->tty[(consumed + index) % JOLT_TTY_SIZE];
-    InterlockedExchange(&k->tty_read, (LONG)(consumed + count));
+    for (DWORD index = 0; index < count; index++) buffer[index] = tty->output[(consumed + index) % JOLT_TTY_SIZE];
+    InterlockedExchange(&tty->output_read, (LONG)(consumed + count));
     display_output(buffer, count);
 }
 
@@ -502,15 +502,10 @@ void display_resize(void) {
     int rows, columns;
     grid_size(&rows, &columns);
     if (columns < MINIMUM_COLUMNS || rows < MINIMUM_ROWS) return;
-    struct jolt_kernel *k = kernel();
-    if (columns == k->columns && rows == k->rows) return;
+    if (columns == console()->columns && rows == console()->rows) return;
     vterm_set_size(view.terminal, rows, columns);
     vterm_screen_flush_damage(view.screen);
-    jolt_lock();
-    k->rows = (WORD)rows;
-    k->columns = (WORD)columns;
-    jolt_signal_group(k->foreground, LINUX_SIGWINCH);
-    jolt_unlock();
+    jolt_tty_resize(JOLT_CONSOLE, (WORD)rows, (WORD)columns);
     if (view.scroll > scrollback_count()) view.scroll = scrollback_count();
     update_scrollbar();
     invalidate_all();
@@ -565,8 +560,8 @@ int display_create(HWND window, const struct display_settings *settings, display
     load_fonts();
     int rows, columns;
     grid_size(&rows, &columns);
-    kernel()->rows = (WORD)rows;
-    kernel()->columns = (WORD)columns;
+    console()->rows = (WORD)rows;
+    console()->columns = (WORD)columns;
     view.terminal = vterm_new(rows, columns);
     if (!view.terminal) return 0;
     vterm_set_utf8(view.terminal, 1);
@@ -609,10 +604,10 @@ int display_splash_loaded(void) {
 DWORD display_screen_text(char *buffer, DWORD capacity) {
     DWORD used = 0;
     if (!view.screen) return 0;
-    for (int row = 0; row < kernel()->rows; row++) {
+    for (int row = 0; row < console()->rows; row++) {
         char text[COLUMN_LIMIT];
         int end = 0;
-        for (int column = 0; column < kernel()->columns && column < COLUMN_LIMIT; column++) {
+        for (int column = 0; column < console()->columns && column < COLUMN_LIMIT; column++) {
             VTermScreenCell cell;
             VTermPos position = { row, column };
             char character = ' ';

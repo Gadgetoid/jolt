@@ -19,6 +19,8 @@
 #define ZERO_DEVICE_MINOR 5
 #define RANDOM_DEVICE_MINOR 9
 #define TTY_DEVICE_MAJOR 5
+#define PTMX_DEVICE_MINOR 2
+#define PTS_DEVICE_MAJOR 136
 #define MISC_DEVICE_MAJOR 10
 #define CLIPBOARD_DEVICE_MINOR 240
 #define SERIAL_DEVICE_MAJOR 4
@@ -51,12 +53,14 @@ struct virtual_directory {
     BYTE entry_type;
 };
 
-static const char *const device_names[] = { "clipboard", "console", "null", "random", "tty", "ttyS0", "ttyS1", "ttyS2", "ttyS3", "urandom", "zero", NULL };
+static const char *const device_names[] = { "clipboard", "console", "null", "ptmx", "pts", "random", "tty", "ttyS0", "ttyS1", "ttyS2", "ttyS3", "urandom", "zero", NULL };
+static const char *const pts_names[] = { "0", "1", "2", "3", NULL };
 static const char *const no_names[] = { NULL };
 
 static const struct virtual_directory virtual_directories[] = {
     { "/bin", no_names, LINUX_DT_REG },
     { "/dev", device_names, LINUX_DT_CHR },
+    { "/dev/pts", pts_names, LINUX_DT_CHR },
 };
 
 static WCHAR root[MAX_PATH];
@@ -103,10 +107,17 @@ static int device_kind(const char *name) {
     if (!strcmp(name, "null")) return NODE_NULL;
     if (!strcmp(name, "zero")) return NODE_ZERO;
     if (!strcmp(name, "tty") || !strcmp(name, "console")) return NODE_TTY;
+    if (!strcmp(name, "ptmx")) return NODE_PTMX;
     if (!strcmp(name, "random") || !strcmp(name, "urandom")) return NODE_RANDOM;
     if (!strcmp(name, "clipboard")) return NODE_CLIPBOARD;
     if (serial_port_named(name) >= 0) return NODE_SERIAL;
     return NODE_MISSING;
+}
+
+static int pty_active(const char *number) {
+    if (number[0] < '0' || number[0] > '9' || number[1]) return 0;
+    int index = number[0] - '0' + 1;
+    return index < JOLT_TTYS && jolt.kernel->ttys[index].state == TTY_PTY;
 }
 
 static int proc_kind(const char *absolute) {
@@ -128,6 +139,8 @@ static int virtual_node(const char *absolute, struct jolt_node *node) {
     } else if (has_prefix(absolute, "/bin/")) {
         node->kind = jolt_is_applet(absolute + strlen("/bin/")) ? NODE_APPLET : NODE_MISSING;
         node->size = JOLT_GUEST_SIZE;
+    } else if (has_prefix(absolute, "/dev/pts/")) {
+        node->kind = pty_active(absolute + strlen("/dev/pts/")) ? NODE_PTS : NODE_MISSING;
     } else if (has_prefix(absolute, "/dev/")) {
         node->kind = device_kind(absolute + strlen("/dev/"));
     } else {
@@ -258,7 +271,11 @@ LONG jolt_file_open(char *absolute, DWORD flags, DWORD *type) {
         *type = DESCRIPTION_ZERO;
         return 0;
     case NODE_TTY:
+    case NODE_PTS:
         *type = DESCRIPTION_TTY;
+        return 0;
+    case NODE_PTMX:
+        *type = DESCRIPTION_PTY_MASTER;
         return 0;
     case NODE_RANDOM:
         *type = DESCRIPTION_RANDOM;
@@ -397,8 +414,9 @@ static LONG list_virtual(struct jolt_description *description, const struct virt
     int applets = !strcmp(directory->path, "/bin");
     const char *name = applets ? jolt_applet_names : directory->names[0];
     DWORD item = 0;
+    int ptys = !strcmp(directory->path, "/dev/pts");
     for (DWORD position = FIRST_HOST_ENTRY; name && *name; position++) {
-        if (position >= description->offset) {
+        if (position >= description->offset && (!ptys || pty_active(name))) {
             if (!put_entry(buffer, capacity, used, position + 1, name, directory->entry_type))
                 return *used ? (LONG)*used : fail(LINUX_EINVAL);
             description->offset = position + 1;
@@ -515,7 +533,12 @@ struct file_identity {
 static int description_identity(const struct jolt_description *description, struct file_identity *identity) {
     switch (description->type) {
     case DESCRIPTION_TTY:
-        *identity = (struct file_identity){ LINUX_S_IFCHR | 0620, TTY_DEVICE_MAJOR, 0, 0 };
+        if (description->tty != JOLT_CONSOLE)
+            *identity = (struct file_identity){ LINUX_S_IFCHR | 0620, PTS_DEVICE_MAJOR, (DWORD)(description->tty - 1), 0 };
+        else *identity = (struct file_identity){ LINUX_S_IFCHR | 0620, TTY_DEVICE_MAJOR, 0, 0 };
+        return 1;
+    case DESCRIPTION_PTY_MASTER:
+        *identity = (struct file_identity){ LINUX_S_IFCHR | 0666, TTY_DEVICE_MAJOR, PTMX_DEVICE_MINOR, 0 };
         return 1;
     case DESCRIPTION_NULL:
         *identity = (struct file_identity){ LINUX_S_IFCHR | 0666, MEMORY_DEVICE_MAJOR, NULL_DEVICE_MINOR, 0 };
@@ -576,6 +599,13 @@ static void node_identity(const struct jolt_node *node, const char *absolute, st
         *identity = (struct file_identity){ LINUX_S_IFCHR | 0660, SERIAL_DEVICE_MAJOR,
             SERIAL_DEVICE_MINOR_BASE + (DWORD)serial_port_of(absolute), 0 };
         break;
+    case NODE_PTMX:
+        *identity = (struct file_identity){ LINUX_S_IFCHR | 0666, TTY_DEVICE_MAJOR, PTMX_DEVICE_MINOR, 0 };
+        break;
+    case NODE_PTS:
+        *identity = (struct file_identity){ LINUX_S_IFCHR | 0620, PTS_DEVICE_MAJOR,
+            (DWORD)(absolute[strlen("/dev/pts/")] - '0'), 0 };
+        break;
     default:
         *identity = (struct file_identity){ LINUX_S_IFCHR | 0620, TTY_DEVICE_MAJOR, 0, 0 };
         break;
@@ -607,6 +637,7 @@ LONG jolt_file_statx(int index, const char *absolute, struct linux_statx *record
     if (index >= 0) {
         const struct jolt_description *description = &jolt.kernel->descriptions[index];
         if (description_identity(description, &identity)) {
+            if (description->path[0]) identity.inode = path_inode(description->path);
             fill_statx(record, &identity, &node);
             return 0;
         }

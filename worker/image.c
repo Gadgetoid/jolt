@@ -86,7 +86,7 @@ static void report_unmarked(const char *absolute) {
     char text[REFUSAL_CAPACITY];
     int length = snprintf(text, sizeof text,
         "jolt: %s was not built for JoLT (set " JOLT_ALLOW_UNMARKED " to try it anyway)\n", absolute);
-    if (length > 0) jolt_tty_write(text, (DWORD)(length < (int)sizeof text ? length : (int)sizeof text - 1), 1);
+    if (length > 0) jolt_tty_write(self->ctty == JOLT_NO_TTY ? JOLT_CONSOLE : self->ctty, text, (DWORD)(length < (int)sizeof text ? length : (int)sizeof text - 1), 1);
 }
 
 static DWORD hash_bytes(DWORD hash, const void *data, DWORD length) {

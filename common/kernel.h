@@ -3,7 +3,7 @@
 #include "linux.h"
 
 #define JOLT_KERNEL_MAGIC 0x4a4f4c4bUL
-#define JOLT_KERNEL_VERSION 12
+#define JOLT_KERNEL_VERSION 13
 #define JOLT_PROCESSES 16
 #define JOLT_DESCRIPTIONS 48
 #define JOLT_PIPES 12
@@ -13,6 +13,10 @@
 #define JOLT_FDS 64
 #define JOLT_TTY_SIZE 8192
 #define JOLT_INPUT_SIZE 1024
+#define JOLT_TTYS 5
+#define JOLT_CONSOLE 0
+#define JOLT_NO_TTY (-1)
+#define JOLT_TTY_LINE 256
 #define JOLT_GUEST_PATH 256
 #define JOLT_ARGUMENTS 1024
 #define JOLT_COMMAND_LINE 128
@@ -32,8 +36,9 @@ enum { START_EXEC = 1, START_FORK };
 enum {
     DESCRIPTION_FREE, DESCRIPTION_FILE, DESCRIPTION_DIRECTORY, DESCRIPTION_PIPE_READ,
     DESCRIPTION_PIPE_WRITE, DESCRIPTION_TTY, DESCRIPTION_NULL, DESCRIPTION_ZERO, DESCRIPTION_PROC, DESCRIPTION_SOCKET, DESCRIPTION_RANDOM,
-    DESCRIPTION_STREAM, DESCRIPTION_SERIAL, DESCRIPTION_EVENT
+    DESCRIPTION_STREAM, DESCRIPTION_SERIAL, DESCRIPTION_EVENT, DESCRIPTION_PTY_MASTER
 };
+enum { TTY_FREE, TTY_CONSOLE, TTY_PTY };
 enum { SERIAL_CLOSED, SERIAL_OPENING, SERIAL_OPEN, SERIAL_FAILED };
 #define JOLT_NETWORK_BUFFER 4096
 
@@ -73,6 +78,7 @@ struct jolt_description {
     DWORD shutdown;
     DWORD socket;
     DWORD socket_type;
+    LONG tty;
     char path[JOLT_GUEST_PATH];
 };
 
@@ -80,6 +86,7 @@ struct jolt_process {
     DWORD state;
     DWORD start;
     LONG pid, ppid, pgid, sid;
+    LONG ctty;
     DWORD host;
     LONG source;
     DWORD status;
@@ -128,21 +135,32 @@ struct jolt_serial {
     char sent[JOLT_SERIAL_BUFFER];
 };
 
+struct jolt_tty {
+    LONG state;
+    LONG masters, slaves;
+    LONG locked;
+    LONG hung_up;
+    LONG opened;
+    LONG session, foreground;
+    WORD rows, columns;
+    struct linux_termios termios;
+    volatile LONG output_written, output_read, output_notified;
+    volatile LONG input_written, input_read;
+    LONG input_eof;
+    DWORD line_length;
+    char line[JOLT_TTY_LINE];
+    char output[JOLT_TTY_SIZE];
+    char input[JOLT_INPUT_SIZE];
+};
+
 struct jolt_kernel {
     DWORD magic, version, size;
     DWORD window, launcher, trace;
-    WORD rows, columns;
-    struct linux_termios termios;
-    LONG foreground;
     LONG next_pid;
     DWORD image_size;
-    volatile LONG tty_written, tty_read, tty_notified;
-    volatile LONG input_written, input_read;
-    LONG input_eof;
     LONG spare_state, spare_slot;
     DWORD spare_host;
-    char tty[JOLT_TTY_SIZE];
-    char input[JOLT_INPUT_SIZE];
+    struct jolt_tty ttys[JOLT_TTYS];
     char arguments[JOLT_ARGUMENTS];
     struct jolt_process processes[JOLT_PROCESSES];
     struct jolt_description descriptions[JOLT_DESCRIPTIONS];
@@ -180,4 +198,12 @@ void jolt_description_release(int index);
 int jolt_fd_install(struct jolt_process *process, int minimum, int description, int cloexec);
 void jolt_fd_close(struct jolt_process *process, int fd);
 void jolt_process_exit(int slot, DWORD status);
-DWORD jolt_tty_write(const char *bytes, DWORD length, int block);
+void jolt_tty_default_settings(struct linux_termios *settings);
+int jolt_tty_open(void);
+DWORD jolt_tty_write(int tty, const char *bytes, DWORD length, int block);
+DWORD jolt_tty_master_write(int tty, const char *bytes, DWORD length);
+void jolt_tty_input(int tty, char character);
+void jolt_tty_discard_input(int tty);
+void jolt_tty_hang_up(int tty);
+void jolt_tty_resize(int tty, WORD rows, WORD columns);
+void jolt_tty_release_end(int tty, int master);

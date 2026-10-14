@@ -126,7 +126,9 @@ static LONG read_descriptor(DWORD fd, DWORD buffer, DWORD length, LONG position)
     int nonblocking = (description->flags & LINUX_O_NONBLOCK) != 0;
     switch (description->type) {
     case DESCRIPTION_TTY:
-        return tty_read((char *)buffer, length, nonblocking);
+        return tty_read(description->tty, (char *)buffer, length, nonblocking);
+    case DESCRIPTION_PTY_MASTER:
+        return pty_master_read(description->tty, (char *)buffer, length, nonblocking);
     case DESCRIPTION_PIPE_READ:
     case DESCRIPTION_STREAM:
         return pipe_read(index, (char *)buffer, length);
@@ -165,7 +167,9 @@ static LONG write_descriptor(DWORD fd, DWORD buffer, DWORD length, LONG position
     if (read_only && description->type != DESCRIPTION_TTY) return error(LINUX_EBADF);
     switch (description->type) {
     case DESCRIPTION_TTY:
-        return (LONG)jolt_tty_write((const char *)buffer, length, 1);
+        return tty_write(description->tty, (const char *)buffer, length);
+    case DESCRIPTION_PTY_MASTER:
+        return pty_master_write(description->tty, (const char *)buffer, length);
     case DESCRIPTION_PIPE_WRITE:
         return pipe_write(index, description->pipe, (const char *)buffer, length);
     case DESCRIPTION_STREAM:
@@ -243,11 +247,21 @@ static LONG open_at(DWORD directory, DWORD path, DWORD flags) {
         return result;
     }
     DWORD stored = flags & ~(DWORD)(LINUX_O_CREAT | LINUX_O_EXCL | LINUX_O_TRUNC | LINUX_O_CLOEXEC);
-    if (type == DESCRIPTION_TTY) stored = (stored & ~(DWORD)LINUX_O_ACCMODE) | LINUX_O_RDWR;
+    if (type == DESCRIPTION_TTY || type == DESCRIPTION_PTY_MASTER) stored = (stored & ~(DWORD)LINUX_O_ACCMODE) | LINUX_O_RDWR;
     jolt_lock();
+    LONG terminal = JOLT_CONSOLE;
+    if (type == DESCRIPTION_TTY || type == DESCRIPTION_PTY_MASTER) {
+        result = tty_open(absolute, type, &terminal);
+        if (result) {
+            jolt_unlock();
+            return result;
+        }
+    }
     if (type == DESCRIPTION_SERIAL) stored = (stored & ~(DWORD)LINUX_O_ACCMODE) | LINUX_O_RDWR;
     int index = jolt_description_alloc(type, stored, absolute);
     if (index >= 0 && type == DESCRIPTION_SERIAL) description_at(index)->pipe = (DWORD)serial_port_of(absolute);
+    if (index >= 0) description_at(index)->tty = terminal;
+    if (index < 0 && (type == DESCRIPTION_TTY || type == DESCRIPTION_PTY_MASTER)) jolt_tty_release_end(terminal, type == DESCRIPTION_PTY_MASTER);
     if (index < 0 && type == DESCRIPTION_SERIAL && --kernel()->serial[serial_port_of(absolute)].users <= 0) SetEvent(jolt.serial);
     int fd = index < 0 ? error(LINUX_ENFILE) : jolt_fd_install(self, 0, index, (flags & LINUX_O_CLOEXEC) != 0);
     if (index >= 0 && fd < 0) jolt_description_release(index);

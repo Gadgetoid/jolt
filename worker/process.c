@@ -318,6 +318,7 @@ LONG sys_setsid(const DWORD *arguments) {
     (void)arguments;
     jolt_lock();
     self->sid = self->pgid = self->pid;
+    self->ctty = JOLT_NO_TTY;
     jolt_unlock();
     return self->pid;
 }

@@ -62,7 +62,7 @@ NETWORK SUPPORT??
 - Bitmap fonts drawn by JoLT (Terminus, Spleen) if TrueType is too ragged at small sizes
 - Windows key: Win+key shortcuts, a second bank of hot keys, or an on-screen overlay (memory, programs, theme, font)
 - ncurses with a minimal terminfo entry - DONE (ncurses 6.6, built-in fallbacks, TERM=xterm-256color)
-- ptys (/dev/ptmx, /dev/pts/*)
+- ptys (/dev/ptmx, /dev/pts/*) - DONE (4 ptys; line discipline shared by console and ptys in common/tty.c; controlling terminals, TIOCSCTTY, hangup on master close; BusyBox script)
 - dvtm + abduco (multiplexer)
 
 ### Audio

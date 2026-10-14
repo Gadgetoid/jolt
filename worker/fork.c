@@ -37,6 +37,7 @@ static void prepare_child(int child) {
     process->ppid = self->pid;
     process->pgid = self->pgid;
     process->sid = self->sid;
+    process->ctty = self->ctty;
     process->fatal = self->fatal;
     process->ignored = self->ignored;
     memcpy(process->fds, self->fds, sizeof process->fds);

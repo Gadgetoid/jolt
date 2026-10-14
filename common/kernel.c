@@ -177,6 +177,8 @@ void jolt_description_release(int index) {
     if (description->type == DESCRIPTION_PIPE_WRITE) jolt.kernel->pipes[description->pipe].writers--;
     commit_clipboard(description);
     if (description->type == DESCRIPTION_SERIAL && --jolt.kernel->serial[description->pipe].users <= 0) SetEvent(jolt.serial);
+    if (description->type == DESCRIPTION_TTY) jolt_tty_release_end(description->tty, 0);
+    if (description->type == DESCRIPTION_PTY_MASTER) jolt_tty_release_end(description->tty, 1);
     if (description->type == DESCRIPTION_STREAM) {
         if (!(description->shutdown & JOLT_SHUTDOWN_READ)) jolt.kernel->pipes[description->pipe].readers--;
         if (!(description->shutdown & JOLT_SHUTDOWN_WRITE)) jolt.kernel->pipes[description->output].writers--;
@@ -226,36 +228,7 @@ void jolt_process_exit(int slot, DWORD status) {
     int parent = process->ppid ? jolt_find_pid(process->ppid) : -1;
     if (parent >= 0 && kernel->processes[parent].state == PROCESS_RUNNING) jolt_notify_parent(slot);
     else process->ppid = 0;
-    if (kernel->window && !InterlockedExchange(&kernel->tty_notified, 1))
+    if (kernel->window && !InterlockedExchange(&kernel->ttys[JOLT_CONSOLE].output_notified, 1))
         PostMessageW((HWND)kernel->window, JOLT_TTY_MESSAGE, 0, 0);
 }
 
-DWORD jolt_tty_write(const char *bytes, DWORD length, int block) {
-    struct jolt_kernel *kernel = jolt.kernel;
-    DWORD done = 0;
-    while (done < length) {
-        jolt_lock();
-        DWORD output = kernel->termios.output_flags;
-        int translate = (output & LINUX_OPOST) && (output & LINUX_ONLCR);
-        DWORD written = (DWORD)kernel->tty_written;
-        DWORD space = JOLT_TTY_SIZE - (written - (DWORD)kernel->tty_read);
-        while (done < length) {
-            char character = bytes[done];
-            DWORD needed = character == '\n' && translate ? 2 : 1;
-            if (space < needed) break;
-            if (needed == 2) kernel->tty[written++ % JOLT_TTY_SIZE] = '\r';
-            kernel->tty[written++ % JOLT_TTY_SIZE] = character;
-            space -= needed;
-            done++;
-        }
-        InterlockedExchange(&kernel->tty_written, (LONG)written);
-        jolt_unlock();
-        if (kernel->window && !InterlockedExchange(&kernel->tty_notified, 1))
-            PostMessageW((HWND)kernel->window, JOLT_TTY_MESSAGE, 0, 0);
-        if (done < length) {
-            if (!block) break;
-            Sleep(5);
-        }
-    }
-    return done;
-}

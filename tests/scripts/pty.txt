@@ -1,0 +1,16 @@
+ls /dev/ptmx
+script -q -c 'tty; stty size; ls /dev/pts; echo pty-hello' /tmp/pty.log < /dev/null
+@wait 2000
+cat /tmp/pty.log | tr -d '\\r' | grep -c pty-hello
+script -q -c 'sh -c "sleep 1 & wait; echo bg-done"' /dev/null < /dev/null
+@wait 3000
+script -q -c 'printf "%s\\n" a b | while read l; do echo "line $l"; done' /dev/null < /dev/null
+@wait 2000
+script -q -c 'sleep 30; echo not-interrupted' /dev/null
+@wait 2000
+\x03\c
+@wait 2000
+echo "after pty interrupt"
+ls /dev/pts | wc -l
+tty
+exit 0

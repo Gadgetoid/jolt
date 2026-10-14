@@ -25,13 +25,13 @@ target_include_directories(jolt_vterm PUBLIC "${JOLT_DEPS}/libvterm-0.3.3/includ
 target_compile_options(jolt_vterm PRIVATE "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/terminal/vterm-platform.h")
 
 file(GLOB terminal_sources terminal/*.c)
-jornada_add_executable(jolt-term ${terminal_sources} common/kernel.c common/hostpath.c common/text.c OUTPUT JoLT-Term.exe ICON assets/jolt.ico)
+jornada_add_executable(jolt-term ${terminal_sources} common/kernel.c common/tty.c common/hostpath.c common/text.c OUTPUT JoLT-Term.exe ICON assets/jolt.ico)
 target_include_directories(jolt-term PRIVATE common "${JOLT_GUEST_DIR}")
 target_link_libraries(jolt-term PRIVATE jolt_vterm jolt_digest jornada::winsock)
 target_compile_options(jolt-term PRIVATE -Wall -Wextra -Werror)
 
 file(GLOB worker_sources worker/*.c)
-add_executable(jolt-worker ${worker_sources} worker/bridge.S common/kernel.c common/hostpath.c common/text.c)
+add_executable(jolt-worker ${worker_sources} worker/bridge.S common/kernel.c common/tty.c common/hostpath.c common/text.c)
 target_include_directories(jolt-worker PRIVATE common "${JOLT_GUEST_DIR}")
 target_compile_options(jolt-worker PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(jolt-worker PRIVATE jolt_digest jornada::winsock jornada::headers)

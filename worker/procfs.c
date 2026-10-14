@@ -8,6 +8,8 @@
 #include "text.h"
 #include "files.h"
 
+#define CONSOLE_DEVICE ((5 << 8) | 1)
+#define PTS_DEVICE_MAJOR 136
 #define PROC_ROOT "/proc"
 #define SELF_LINK "self"
 #define EXECUTABLE_TARGET "/bin/busybox"
@@ -17,6 +19,7 @@
 #define PAGE_BYTES 4096
 #define NAME_CAPACITY 16
 #define TASK_DIRECTORY "task"
+#define FD_DIRECTORY "fd"
 #define PID_MAX_PATH "sys/kernel/pid_max"
 #define PID_MAX 30000
 #define APM_UNKNOWN 0xff
@@ -61,6 +64,8 @@ struct proc_path {
     enum proc_file file;
     int valid;
     int task_listing;
+    int fd_listing;
+    LONG fd;
 };
 
 static struct jolt_kernel *kernel(void) {
@@ -82,15 +87,19 @@ static enum proc_file find_file(const struct proc_name *names, size_t count, con
     return FILE_NONE;
 }
 
-static int parse_pid(const char *text, size_t length, LONG *pid) {
+static int parse_number(const char *text, size_t length, LONG *value) {
     if (!length || length > 6) return 0;
-    LONG value = 0;
+    LONG parsed = 0;
     for (size_t index = 0; index < length; index++) {
         if (text[index] < '0' || text[index] > '9') return 0;
-        value = value * 10 + (text[index] - '0');
+        parsed = parsed * 10 + (text[index] - '0');
     }
-    *pid = value;
-    return value > 0;
+    *value = parsed;
+    return 1;
+}
+
+static int parse_pid(const char *text, size_t length, LONG *pid) {
+    return parse_number(text, length, pid) && *pid > 0;
 }
 
 int procfs_owns(const char *absolute) {
@@ -103,9 +112,16 @@ static int process_exists(LONG pid) {
     return slot >= 0 && kernel()->processes[slot].state != PROCESS_FREE;
 }
 
+static int open_description(LONG pid, LONG fd) {
+    int slot = jolt_find_pid(pid);
+    if (slot < 0 || fd < 0 || fd >= JOLT_FDS) return -1;
+    return kernel()->processes[slot].fds[fd] - 1;
+}
+
 static struct proc_path parse(const char *absolute) {
     struct proc_path path;
     memset(&path, 0, sizeof path);
+    path.fd = -1;
     const char *cursor = absolute + strlen(PROC_ROOT);
     if (!*cursor) {
         path.root = path.valid = 1;
@@ -125,6 +141,16 @@ static struct proc_path parse(const char *absolute) {
         return path;
     }
     if (!process_exists(path.pid)) return path;
+    if (rest && !strcmp(rest, FD_DIRECTORY)) {
+        path.fd_listing = path.valid = 1;
+        return path;
+    }
+    if (rest && !strncmp(rest, FD_DIRECTORY "/", strlen(FD_DIRECTORY) + 1)) {
+        const char *number = rest + strlen(FD_DIRECTORY) + 1;
+        if (!parse_number(number, strlen(number), &path.fd) || open_description(path.pid, path.fd) < 0) return path;
+        path.self_link = path.valid = 1;
+        return path;
+    }
     if (rest && !strcmp(rest, TASK_DIRECTORY)) {
         path.task_listing = path.valid = 1;
         return path;
@@ -170,6 +196,17 @@ static int nth_live_process(DWORD index, LONG *pid) {
 int procfs_entry(const char *directory, DWORD position, char *name, BYTE *type) {
     struct proc_path path = parse(directory);
     if (!path.valid) return 0;
+    if (path.fd_listing) {
+        int slot = jolt_find_pid(path.pid);
+        DWORD seen = 0;
+        for (int fd = 0; slot >= 0 && fd < JOLT_FDS; fd++) {
+            if (!kernel()->processes[slot].fds[fd] || seen++ != position) continue;
+            snprintf(name, NAME_CAPACITY, "%d", fd);
+            *type = LINUX_DT_LNK;
+            return 1;
+        }
+        return 0;
+    }
     if (path.task_listing) {
         if (position) return 0;
         snprintf(name, NAME_CAPACITY, "%ld", path.pid);
@@ -177,12 +214,12 @@ int procfs_entry(const char *directory, DWORD position, char *name, BYTE *type) 
         return 1;
     }
     if (!path.root) {
-        if (position == PROCESS_FILE_COUNT) {
-            strcpy(name, TASK_DIRECTORY);
+        if (position == PROCESS_FILE_COUNT || position == PROCESS_FILE_COUNT + 1) {
+            strcpy(name, position == PROCESS_FILE_COUNT ? TASK_DIRECTORY : FD_DIRECTORY);
             *type = LINUX_DT_DIR;
             return 1;
         }
-        if (position > PROCESS_FILE_COUNT) return 0;
+        if (position > PROCESS_FILE_COUNT + 1) return 0;
         strcpy(name, process_files[position].name);
         *type = LINUX_DT_REG;
         return 1;
@@ -229,11 +266,18 @@ static char process_state(const struct jolt_process *process) {
     return 'R';
 }
 
+static DWORD terminal_device(LONG ctty) {
+    if (ctty == JOLT_NO_TTY) return 0;
+    if (ctty == JOLT_CONSOLE) return CONSOLE_DEVICE;
+    return (PTS_DEVICE_MAJOR << 8) | (DWORD)(ctty - 1);
+}
+
 static LONG render_process_stat(const struct jolt_process *process, char *buffer, DWORD capacity) {
+    LONG foreground = process->ctty == JOLT_NO_TTY ? -1 : kernel()->ttys[process->ctty].foreground;
     return snprintf(buffer, capacity,
-        "%ld (%s) %c %ld %ld %ld 0 %ld 0 0 0 0 0 0 0 0 0 20 0 1 0 %lu %lu %lu 4294967295 0 0 0 0 0 0 0 0 0 0 0 0 17 0 0 0 0 0 0\n",
+        "%ld (%s) %c %ld %ld %ld %lu %ld 0 0 0 0 0 0 0 0 0 20 0 1 0 %lu %lu %lu 4294967295 0 0 0 0 0 0 0 0 0 0 0 0 17 0 0 0 0 0 0\n",
         process->pid, process->name, process_state(process), process->ppid, process->pgid, process->sid,
-        kernel()->foreground, process->start_tick / MILLISECONDS_PER_TICK,
+        terminal_device(process->ctty), foreground, process->start_tick / MILLISECONDS_PER_TICK,
         process->pages * PAGE_BYTES, process->pages);
 }
 
@@ -384,7 +428,7 @@ static LONG render_jolt(char *buffer, DWORD capacity) {
         JOLT_VERSION, version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber, oem, platform,
         device, owner, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), depth,
         store.dwStoreSize / 1024, store.dwFreeSize / 1024, card_total_kb, card_free_kb,
-        kernel()->columns, kernel()->rows);
+        kernel()->ttys[JOLT_CONSOLE].columns, kernel()->ttys[JOLT_CONSOLE].rows);
 }
 
 static LONG render_system(enum proc_file file, char *buffer, DWORD capacity) {
@@ -436,8 +480,14 @@ LONG procfs_render(const char *absolute, char *buffer, DWORD capacity) {
 LONG procfs_readlink(const char *absolute, char *buffer, DWORD capacity) {
     struct proc_path path = parse(absolute);
     if (!path.valid) return -(LONG)LINUX_ENOENT;
-    char target[NAME_CAPACITY];
-    if (path.self_link) snprintf(target, sizeof target, "%ld", path.pid);
+    char target[JOLT_GUEST_PATH];
+    if (path.fd >= 0) {
+        const struct jolt_description *description = &kernel()->descriptions[open_description(path.pid, path.fd)];
+        if (description->path[0]) snprintf(target, sizeof target, "%s", description->path);
+        else if (description->type == DESCRIPTION_PIPE_READ || description->type == DESCRIPTION_PIPE_WRITE)
+            snprintf(target, sizeof target, "pipe:[%lu]", (unsigned long)description->pipe);
+        else snprintf(target, sizeof target, "anon_inode:[%lu]", (unsigned long)description->type);
+    } else if (path.self_link) snprintf(target, sizeof target, "%ld", path.pid);
     else if (path.file == FILE_PROCESS_EXE) strcpy(target, EXECUTABLE_TARGET);
     else return -(LONG)LINUX_EINVAL;
     DWORD length = (DWORD)strlen(target);

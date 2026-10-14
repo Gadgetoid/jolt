@@ -134,7 +134,9 @@ static void prepare_init(void) {
     memset(init, 0, sizeof *init);
     init->state = PROCESS_STARTING;
     init->start = START_EXEC;
-    init->pid = init->pgid = init->sid = k->foreground = INIT_PID;
+    struct jolt_tty *console = &k->ttys[JOLT_CONSOLE];
+    init->pid = init->pgid = init->sid = console->session = console->foreground = INIT_PID;
+    init->ctty = JOLT_CONSOLE;
     k->next_pid = INIT_PID + 1;
     init->fatal = ~(LINUX_DEFAULT_IGNORED | LINUX_DEFAULT_STOP);
     init->ignored = LINUX_DEFAULT_IGNORED;
@@ -267,8 +269,9 @@ void broker_monitor(void) {
 
 int broker_idle(DWORD quiet_interval) {
     struct jolt_kernel *k = kernel();
-    if (tty_line_pending() || (DWORD)k->input_written != (DWORD)k->input_read) return 0;
-    if ((DWORD)k->tty_written != (DWORD)k->tty_read) return 0;
+    const struct jolt_tty *console = &k->ttys[JOLT_CONSOLE];
+    if (console->line_length || (DWORD)console->input_written != (DWORD)console->input_read) return 0;
+    if ((DWORD)console->output_written != (DWORD)console->output_read) return 0;
     if (GetTickCount() - session.last_output_time < quiet_interval) return 0;
     int reading = 0, starting = 0;
     jolt_lock();
@@ -276,7 +279,7 @@ int broker_idle(DWORD quiet_interval) {
         const struct jolt_process *process = &k->processes[slot];
         if (process->state == PROCESS_STARTING) starting = 1;
         int waiting_input = process->waiting == WAIT_TTY || process->waiting == WAIT_POLL;
-        int foreground = process->pgid == k->foreground;
+        int foreground = process->pgid == console->foreground;
         if (process->state == PROCESS_RUNNING && foreground && waiting_input) reading = 1;
     }
     jolt_unlock();

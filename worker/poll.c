@@ -33,9 +33,8 @@ static int readiness(DWORD fd, int events) {
     const struct jolt_description *description = description_at(index);
     struct jolt_kernel *k = kernel();
     int ready = 0;
-    if (description->type == DESCRIPTION_TTY) {
-        if ((DWORD)k->input_written != (DWORD)k->input_read || k->input_eof) ready |= LINUX_POLLIN;
-        ready |= LINUX_POLLOUT;
+    if (description->type == DESCRIPTION_TTY || description->type == DESCRIPTION_PTY_MASTER) {
+        ready = tty_readiness(description->tty, description->type == DESCRIPTION_PTY_MASTER);
     } else if (description->type == DESCRIPTION_PIPE_READ) {
         ready = pipe_input_readiness(&k->pipes[description->pipe]);
     } else if (description->type == DESCRIPTION_STREAM) {

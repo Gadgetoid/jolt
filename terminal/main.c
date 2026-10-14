@@ -99,7 +99,7 @@ static LRESULT CALLBACK window_procedure(HWND window, UINT message, WPARAM wpara
         display_resize();
         return 0;
     case JOLT_TTY_MESSAGE:
-        InterlockedExchange(&jolt.kernel->tty_notified, 0);
+        InterlockedExchange(&jolt.kernel->ttys[JOLT_CONSOLE].output_notified, 0);
         display_drain_tty();
         return 0;
     case JOLT_CLIPBOARD_MESSAGE:
@@ -271,7 +271,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPWSTR command_line, 
     }
     jolt.kernel->trace = has_flag(options, L"--trace");
     jolt.kernel->launcher = GetCurrentProcessId();
-    tty_default_settings(&jolt.kernel->termios);
+    struct jolt_tty *console = &jolt.kernel->ttys[JOLT_CONSOLE];
+    console->state = TTY_CONSOLE;
+    jolt_tty_default_settings(&console->termios);
     load_script_argument(options);
     load_command_argument(command_line);
     session.hold = has_flag(options, L"--hold");

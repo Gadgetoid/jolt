@@ -29,6 +29,7 @@ const expectations = {
     shortcut: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["55#\"\\storage card\\jolt\\jolt-term.exe\" -e \"echo hi; ssh -v\"", "43#\"\\storage card\\jolt\\jolt-term.exe\" -e \"top\"", "bad 1", "dropbear v2026"] },
     perf: { result: [], tty: [] },
     "bash-perf": { result: [], tty: [] },
+    pty: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["/dev/pts/0", "pty-hello", "bg-done", "line a", "line b", "after pty interrupt", "\r\n0\r\n", "\r\n/dev/tty\r\n"] },
     launch: { result: ["exit=3 signal=0"], tty: ["\r\nlaunched with args\r\n"] },
     hold: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\nheld command\r\n", "\r\nin shell after hold\r\n"] },
     "ssh-probe": { result: [], tty: [] },

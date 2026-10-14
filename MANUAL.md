@@ -154,10 +154,11 @@ A command starting with `@` changes a terminal setting instead, so it works insi
 
 ```
 1 @toggle
-2 @font=12
+volume-up @font+
+volume-down @font-
 ```
 
-The settings are `@toggle` (full screen or windowed), `@fullscreen`, `@window`, `@dark`, `@light`, `@font=N` and `@theme=NAME`. With `jolt hotkeys fullscreen`, the buttons stop working once you leave full screen, so use `always` if you want a button to switch back.
+The settings are `@toggle` (full screen or windowed), `@fullscreen`, `@window`, `@dark`, `@light`, `@font=N`, `@font+` and `@font-` (2 pixels bigger or smaller), and `@theme=NAME`. With `jolt hotkeys fullscreen`, the buttons stop working once you leave full screen, so use `always` if you want a button to switch back.
 
 | Number | Button | Number | Button |
 | --- | --- | --- | --- |

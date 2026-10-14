@@ -7,7 +7,4 @@ export LESS=-R
 umask 022
 mount -a 2>/dev/null
 [ -r /etc/motd ] && cat /etc/motd
-alias ll='ls -lh'
-alias la='ls -A'
-alias neofetch=joltfetch
-alias traceroute='traceroute -I'
+. /etc/shrc

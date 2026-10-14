@@ -27,6 +27,7 @@
 #define STATUS_PORT_UNREACHABLE 11005
 #define STATUS_TTL_EXPIRED_TRANSIT 11013
 #define STATUS_TTL_EXPIRED_REASSEMBLY 11014
+#define STATUS_TIMED_OUT 11010
 
 DWORD WINAPI WsControl(DWORD protocol, DWORD action, LPVOID request, LPDWORD request_length, LPVOID reply,
     LPDWORD reply_length);
@@ -188,9 +189,14 @@ LONG icmp_send(int index, const BYTE *packet, DWORD length, const struct sockadd
     memset(reply_buffer, 0, sizeof reply_buffer);
     DWORD failure = WsControl(WSCONTROL_TCP, WSCONTROL_ICMP_ECHO, request_buffer, &request_length, reply_buffer, &reply_length);
     const struct echo_reply *reply = (const struct echo_reply *)reply_buffer;
-    if (failure || !reply->reserved) return (LONG)length;
+    if (failure) return error(LINUX_ENETUNREACH);
+    if (!reply->reserved) return (LONG)length;
     BYTE code = 0;
     int type = error_type(reply->status, &code);
+    if (reply->status != STATUS_SUCCESS && reply->status != STATUS_TIMED_OUT && type < 0) {
+        trace("icmp status %lu\r\n", reply->status);
+        return error(LINUX_ENETUNREACH);
+    }
     if (reply->status == STATUS_SUCCESS) {
         DWORD data_size = reply->data_size;
         if (reply->data + data_size > reply_length) data_size = 0;

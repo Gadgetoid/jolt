@@ -4,4 +4,10 @@ jolt font 7
 echo "bad font $?"
 jolt font 16
 stty size
+printf '\\033]7770;font+\\007'
+stty size
+printf '\\033]7770;font-\\007'
+printf '\\033]7770;font-\\007'
+stty size
+jolt font 16
 exit 0

@@ -33,6 +33,13 @@ while IFS= read -r line; do
     esac
 done < /proc/cpuinfo
 
+parent=
+read -r parent < /proc/$PPID/comm 2>/dev/null
+case "$parent" in
+    bash) shell="GNU Bash" ;;
+    *) shell="ash (BusyBox)" ;;
+esac
+
 read -r uptime rest < /proc/uptime
 read -r _ _ _ ac _ _ percent _ < /proc/apm
 
@@ -85,7 +92,7 @@ row '   /  /_ | (_) | | |__  | |' "Host" "$host"
 row '  /_  _/  \___/  |____| |_|' "Kernel" "armv4l $version-jolt"
 row '    / /' "Uptime" "$uptime_text"
 row '   //' "Packages" "$applets applets, $programs programs"
-row '  /' "Shell" "ash (BusyBox)"
+row '  /' "Shell" "$shell"
 row '' "CPU" "${processor%% (*}, ${bogomips%.*} BogoMIPS"
 row '' "Memory" "$(((memory_total - memory_available) / 1024)) MiB / $((memory_total / 1024)) MiB"
 row '' "Storage" "$(((card_kb - card_free_kb) / 1024)) MiB / $((card_kb / 1024)) MiB"

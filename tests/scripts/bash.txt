@@ -10,5 +10,10 @@ sleep 2 &
 jobs
 wait
 echo "interactive ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}"
+echo "histsize $HISTSIZE"
+type ll
+joltfetch | grep -o "Shell.*"
+echo marker-for-history
 exit
+grep -c marker-for-history /.bash_history
 exit 0

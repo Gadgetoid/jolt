@@ -12,6 +12,7 @@
 #define FONT_MINIMUM 8
 #define FONT_MAXIMUM 32
 #define FONT_DEFAULT 16
+#define FONT_STEP 2
 
 static struct display_settings current = { 0, 0, FONT_DEFAULT, THEME_CLASSIC, HOTKEYS_FULLSCREEN };
 static const char *const hotkey_modes[] = { "off", "fullscreen", "always" };
@@ -73,12 +74,20 @@ void settings_load(struct display_settings *settings) {
     *settings = current;
 }
 
+static int step_font(int step) {
+    if (!valid_font(current.font_height + step)) return 0;
+    current.font_height += step;
+    return 1;
+}
+
 static int apply_command(const char *command) {
     if (!strcmp(command, "fullscreen")) current.fullscreen = 1;
     else if (!strcmp(command, "window")) current.fullscreen = 0;
     else if (!strcmp(command, "toggle")) current.fullscreen = !current.fullscreen;
     else if (!strcmp(command, "dark")) current.dark = 1;
     else if (!strcmp(command, "light")) current.dark = 0;
+    else if (!strcmp(command, "font+")) return step_font(FONT_STEP);
+    else if (!strcmp(command, "font-")) return step_font(-FONT_STEP);
     else if (!strncmp(command, "font=", 5) && valid_font(atoi(command + 5))) current.font_height = atoi(command + 5);
     else if (!strncmp(command, "theme=", 6)) return theme_parse(command + 6, &current.theme);
     else if (!strncmp(command, "hotkeys=", 8)) return parse_hotkey_mode(command + 8, &current.hotkeys);

@@ -2,6 +2,7 @@
 #include <winsock.h>
 #include <string.h>
 #include "icmp.h"
+#include "optional.h"
 #include "worker.h"
 #include "memory.h"
 
@@ -29,8 +30,7 @@
 #define STATUS_TTL_EXPIRED_REASSEMBLY 11014
 #define STATUS_TIMED_OUT 11010
 
-DWORD WINAPI WsControl(DWORD protocol, DWORD action, LPVOID request, LPDWORD request_length, LPVOID reply,
-    LPDWORD reply_length);
+typedef DWORD (WINAPI *ws_control_function)(DWORD, DWORD, LPVOID, LPDWORD, LPVOID, LPDWORD);
 
 struct echo_request {
     DWORD address, timeout;
@@ -187,7 +187,12 @@ LONG icmp_send(int index, const BYTE *packet, DWORD length, const struct sockadd
     memcpy(request_buffer + sizeof *request, packet + ICMP_HEADER_SIZE, payload_size);
     DWORD request_length = sizeof *request + payload_size, reply_length = sizeof reply_buffer;
     memset(reply_buffer, 0, sizeof reply_buffer);
-    DWORD failure = WsControl(WSCONTROL_TCP, WSCONTROL_ICMP_ECHO, request_buffer, &request_length, reply_buffer, &reply_length);
+    static ws_control_function ws_control;
+    if (!ws_control) ws_control = (ws_control_function)jolt_optional_in(L"winsock.dll", L"WsControl");
+    if (!ws_control) ws_control = (ws_control_function)jolt_optional(L"WsControl");
+    if (!ws_control) return error(LINUX_ENETUNREACH);
+    DWORD failure = ws_control(WSCONTROL_TCP, WSCONTROL_ICMP_ECHO, request_buffer, &request_length, reply_buffer,
+        &reply_length);
     const struct echo_reply *reply = (const struct echo_reply *)reply_buffer;
     if (failure) return error(LINUX_ENETUNREACH);
     if (!reply->reserved) return (LONG)length;

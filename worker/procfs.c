@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "optional.h"
 #include "procfs.h"
 #include "kernel.h"
 #include "linux.h"
@@ -400,6 +401,8 @@ static void system_parameter_text(UINT action, char *text) {
     host_text(value, text);
 }
 
+typedef BOOL (WINAPI *store_function)(LPSTORE_INFORMATION);
+
 static LONG render_jolt(char *buffer, DWORD capacity) {
     char oem[HOST_TEXT_CAPACITY], platform[HOST_TEXT_CAPACITY], device[HOST_TEXT_CAPACITY], owner[HOST_TEXT_CAPACITY];
     OSVERSIONINFOW version;
@@ -408,7 +411,8 @@ static LONG render_jolt(char *buffer, DWORD capacity) {
     version.dwOSVersionInfoSize = sizeof version;
     GetVersionExW(&version);
     memset(&store, 0, sizeof store);
-    GetStoreInformation(&store);
+    store_function read_store = (store_function)jolt_optional(L"GetStoreInformation");
+    if (read_store) read_store(&store);
     system_parameter_text(SPI_GETOEMINFO, oem);
     system_parameter_text(SPI_GETPLATFORMTYPE, platform);
     registry_text(HKEY_LOCAL_MACHINE, L"Ident", L"Name", HOST_TEXT_CAPACITY, device);

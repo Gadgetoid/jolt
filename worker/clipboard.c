@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <wchar.h>
 #include <jornada/extras.h>
+#include "optional.h"
 #include "clipboard.h"
 #include "worker.h"
 #include "files.h"
@@ -11,10 +12,13 @@
 
 static DWORD sequence;
 
+typedef HANDLE (WINAPI *clipboard_function)(UINT);
+
 static char *snapshot(DWORD *size) {
     *size = 0;
     if (!OpenClipboard(NULL)) return NULL;
-    WCHAR *wide = GetClipboardDataAlloc(CF_UNICODETEXT);
+    clipboard_function read = (clipboard_function)jolt_optional(L"GetClipboardDataAlloc");
+    WCHAR *wide = read ? read(CF_UNICODETEXT) : NULL;
     CloseClipboard();
     if (!wide) return NULL;
     DWORD capacity = (DWORD)wcslen(wide) * UTF8_BYTES_PER_UNIT + 1;

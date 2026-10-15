@@ -73,15 +73,43 @@ static int parse_number(const WCHAR *text, const WCHAR *key, int base, DWORD *va
     return end != found + wcslen(key);
 }
 
-static int guest_layout_available(void) {
+static void diagnose(const char *format, ...) {
+    va_list list;
+    va_start(list, format);
+    vsnprintf(jolt.kernel->diagnostic, JOLT_DIAGNOSTIC, format, list);
+    va_end(list);
+}
+
+static int probe_commit(void) {
+    DWORD probe = GUEST_LIMIT - PAGE_SIZE;
+    if (VirtualAlloc((void *)probe, PAGE_SIZE, MEM_COMMIT, PAGE_READWRITE) != (void *)probe) return 0;
+    VirtualFree((void *)probe, PAGE_SIZE, MEM_DECOMMIT);
+    return 1;
+}
+
+static int guest_layout_available(int report) {
     MEMORY_BASIC_INFORMATION low, high;
     memset(&low, 0, sizeof low);
     memset(&high, 0, sizeof high);
-    if (!VirtualQuery((void *)GUEST_START, &low, sizeof low)) return 0;
-    if (!VirtualQuery((void *)(GUEST_LIMIT - PAGE_SIZE), &high, sizeof high)) return 0;
+    if (!VirtualQuery((void *)GUEST_START, &low, sizeof low) ||
+        !VirtualQuery((void *)(GUEST_LIMIT - PAGE_SIZE), &high, sizeof high)) {
+        if (report) diagnose("worker: VirtualQuery of the guest range failed (error %lu)", GetLastError());
+        return 0;
+    }
     int one_reservation = low.AllocationBase && low.AllocationBase == high.AllocationBase;
     int host_above_guest = ((DWORD)WinMain & 0x01ffffffUL) >= GUEST_LIMIT && ((DWORD)&state & 0x01ffffffUL) >= GUEST_LIMIT;
-    return one_reservation && host_above_guest;
+    if (!one_reservation || !host_above_guest) {
+        if (report) diagnose("worker: guest range %08lx-%08lx not one reservation (bases %08lx/%08lx, state %lx type %lx, host %08lx)",
+            GUEST_START, GUEST_LIMIT, (DWORD)low.AllocationBase, (DWORD)high.AllocationBase, low.State, low.Type,
+            (DWORD)WinMain);
+        return 0;
+    }
+    if (!probe_commit()) {
+        if (report) diagnose("worker: cannot commit guest memory at %08lx (error %lu, base %08lx state %lx type %lx)",
+            GUEST_LIMIT - PAGE_SIZE, GetLastError(), (DWORD)low.AllocationBase, low.State, low.Type);
+        return 0;
+    }
+    return 1;
 }
 
 static int wait_as_spare(DWORD *assigned_slot) {
@@ -172,7 +200,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPWSTR command_line, 
     if (!filename) return 1;
     wcscpy(folder, worker_path);
     folder[filename - worker_path + 1] = 0;
-    int ready = guest_layout_available() && jolt_files_init(folder);
+    int layout = guest_layout_available(!spare);
+    int ready = layout && jolt_files_init(folder);
+    if (layout && !ready && !spare) diagnose("worker: cannot open the JoLT folder");
     if (spare && (!ready || !wait_as_spare(&assigned_slot))) {
         jolt_kernel_close();
         return 0;
@@ -186,6 +216,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPWSTR command_line, 
     int resumed = self->start == START_FORK;
     int started = ready && (resumed ? fork_child() : start_initial_program());
     trace("start slot %d pid %ld started %d\r\n", slot, self->pid, started);
+    if (ready && !started && !resumed) diagnose("worker: could not start the first shell from busybox.elf");
     report_start(started, resumed);
     if (started) run_guest(resumed);
     if (log_file != INVALID_HANDLE_VALUE) CloseHandle(log_file);

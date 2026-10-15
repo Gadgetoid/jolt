@@ -129,8 +129,9 @@
 
 Reports from Brain users (CE 6.0, ARM926EJ-S):
 
-- JoLT-Term fails to launch silently: the Brain's coredll lacks CryptAcquireContextW, CryptGenRandom and CryptReleaseContext. Both callers (terminal/broker.c, worker/random.c) already fall back without CryptoAPI, so resolving these with GetProcAddress should fix it
-- With the exports patched into coredll it reaches the splash, then crashes. Cause unknown; CE 6.0's memory and process model differs from CE 3.0's, so VirtualCopy, shared mappings and cross-process access are suspects
+- JoLT-Term fails to launch silently: the Brain's coredll lacks CryptAcquireContextW, CryptGenRandom and CryptReleaseContext. FIXED: these and other device-specific functions (VirtualCopy, AllKeys, WsControl, SHCreateShortcut, SHLoadDIBitmap, SystemIdleTimerReset, GetClipboardDataAlloc, GetStoreInformation) are looked up by name at runtime, and a missing one disables only its feature
+- Startup failures now show a diagnostic report (CE version, CPU, screen, memory, missing functions, the failing step) and save it as JoLT\diagnostic.txt; `JoLT-Term.exe --diagnose` produces one on demand
+- With the exports patched into coredll it reaches the splash, then crashes. Likely cause: on CE 3.0 an EXE always loads at 0x10000, so the worker is linked high and Linux programs are committed inside its own image reservation (0x10000-0x7f0000). CE 6.0 maps images differently and probably refuses commits there. The worker now probes this at startup and reports the exact failure. A fix would be a CE 6.0 worker build loaded above 0x800000 that reserves the guest range itself, which needs the toolkit to support another image base
 - CPU should be fine: ARMv4 code runs on the ARM926EJ-S
 - Untested: screen size, keyboard, hot keys; /proc/cpuinfo is hardcoded to StrongARM-1110
 

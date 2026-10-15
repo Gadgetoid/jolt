@@ -3,7 +3,7 @@
 #include "linux.h"
 
 #define JOLT_KERNEL_MAGIC 0x4a4f4c4bUL
-#define JOLT_KERNEL_VERSION 15
+#define JOLT_KERNEL_VERSION 16
 #define JOLT_PROCESSES 16
 #define JOLT_DESCRIPTIONS 48
 #define JOLT_PIPES 12
@@ -27,6 +27,7 @@
 #define JOLT_CLIPBOARD_MESSAGE (WM_USER + 3)
 #define JOLT_WARM_MESSAGE (WM_USER + 4)
 #define JOLT_WARM_IMAGES 8
+#define JOLT_DIAGNOSTIC 192
 #define JOLT_MOUNTS 8
 #define JOLT_SERIAL_PORTS 4
 #define JOLT_SERIAL_BUFFER 4096
@@ -180,6 +181,7 @@ struct jolt_kernel {
     struct jolt_serial serial[JOLT_SERIAL_PORTS];
     struct jolt_warm warm[JOLT_WARM_IMAGES];
     LONG warm_clock;
+    char diagnostic[JOLT_DIAGNOSTIC];
 };
 
 struct jolt_runtime {

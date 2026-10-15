@@ -13,12 +13,15 @@
 #include "desktop.h"
 #include "hotkeys.h"
 #include "warm.h"
+#include "optional.h"
+#include "diagnostic.h"
 #include "text.h"
 #include "kernel.h"
 #include "guest-manifest.h"
 
 #define WINDOW_CLASS L"JoltTerminal"
 #define WINDOW_TITLE L"JoLT / Jornada Linux Terminal"
+#define NOT_STARTED_STATUS 127
 #define TIMER_ID 1
 #define TIMER_MILLISECONDS 100
 #define SCRIPT_LIMIT_MILLISECONDS 180000
@@ -56,14 +59,36 @@ static void report_command_failure(void) {
     display_output(text, (DWORD)strlen(text));
 }
 
+static void report_start_failure(void) {
+    DWORD status = session.init_status;
+    int crashed = (status & SIGNAL_MASK) != 0;
+    int not_started = ((status >> EXIT_STATUS_SHIFT) & EXIT_STATUS_MASK) == NOT_STARTED_STATUS;
+    const char *detail = jolt.kernel->diagnostic;
+    if (session.refused || session.first_output_time || (!crashed && !not_started && !detail[0])) return;
+    char problem[MESSAGE_CAPACITY];
+    if (detail[0]) snprintf(problem, sizeof problem, "%s", detail);
+    else if (crashed) snprintf(problem, sizeof problem, "the first shell crashed (signal %lu) before printing anything", status & SIGNAL_MASK);
+    else snprintf(problem, sizeof problem, "the first shell could not start");
+    diagnostic_report(problem);
+}
+
 static void end_session(void) {
     display_drain_tty();
     broker_stop();
     session_save_result();
     KillTimer(session.window, TIMER_ID);
     InvalidateRect(session.window, NULL, FALSE);
+    report_start_failure();
     if (command_failed()) report_command_failure();
     else if (session.quiet || !session.refused) display_close();
+}
+
+typedef void (WINAPI *idle_reset_function)(void);
+
+static void keep_awake(void) {
+    static idle_reset_function reset;
+    if (!reset) reset = (idle_reset_function)jolt_optional(L"SystemIdleTimerReset");
+    if (reset) reset();
 }
 
 static void on_timer(void) {
@@ -72,7 +97,7 @@ static void on_timer(void) {
     warm_trim();
     script_step();
     if (script_active()) {
-        SystemIdleTimerReset();
+        keep_awake();
         if (GetTickCount() - session.start_time > SCRIPT_LIMIT_MILLISECONDS)
             session_finish(LINUX_SIGKILL, "FAIL: script deadline");
     }
@@ -246,6 +271,7 @@ static void refuse(void) {
     session_finish(0, NULL);
     display_output(session.message, (DWORD)strlen(session.message));
     display_output("\r\nPress Escape to close.", 24);
+    diagnostic_report(session.message);
 }
 
 static void run_message_loop(void) {
@@ -273,6 +299,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPWSTR command_line, 
     }
     if (!open_kernel()) {
         write_failure("JOLT_SHELL FAIL kernel objects unavailable\r\n");
+        diagnostic_report("JoLT-Term could not create its shared memory and events");
         return 1;
     }
     jolt.kernel->trace = has_flag(options, L"--trace");
@@ -287,12 +314,16 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPWSTR command_line, 
     struct display_settings settings;
     settings_load(&settings);
     session.window = create_window(instance);
-    if (!session.window) return 1;
+    if (!session.window) {
+        diagnostic_report("JoLT-Term could not create its window");
+        return 1;
+    }
     jolt.kernel->window = (DWORD)session.window;
     SetForegroundWindow(session.window);
     SetFocus(session.window);
     keyboard_set_hotkeys(hotkeys_engaged(&settings));
     if (!display_create(session.window, &settings, run_command)) {
+        diagnostic_report("JoLT-Term could not set up the terminal display");
         DestroyWindow(session.window);
         return 1;
     }
@@ -300,6 +331,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPWSTR command_line, 
     session_path(splash, L"splash.bmp");
     display_show_splash(splash);
     desktop_clipboard_cleanup();
+    if (has_flag(options, L"--diagnose")) diagnostic_show("none, requested with --diagnose");
     if (!broker_load_image() || !broker_start()) refuse();
     SetTimer(session.window, TIMER_ID, TIMER_MILLISECONDS, NULL);
     run_message_loop();

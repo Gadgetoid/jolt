@@ -530,6 +530,10 @@ jolt serial-shell /dev/ttyS0 38400 &    # in the background, keep using JoLT
 
 On the other end, connect at the same speed, for example `picocom -b 115200 /dev/ttyUSB0`. The shell has a proper terminal: Ctrl+C, job control and full-screen programs work. It ends when you type `exit`; run it again for another session.
 
+## If JoLT won't start
+
+If JoLT can't start, it shows a report of what went wrong along with your device's Windows CE version, CPU, screen and memory, and saves the same text as `diagnostic.txt` in the JoLT folder. Please open an issue at https://github.com/Gadgetoid/jolt/issues with that text. To produce the report on a device where JoLT does start, run `JoLT-Term.exe --diagnose`, for example from a shortcut.
+
 # 10. Limitations
 
 - JoLT runs programs built for it, not arbitrary Linux binaries.

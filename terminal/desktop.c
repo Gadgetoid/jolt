@@ -2,6 +2,7 @@
 #include <shellapi.h>
 #include <string.h>
 #include <wchar.h>
+#include "optional.h"
 #include "desktop.h"
 #include "session.h"
 #include "kernel.h"
@@ -17,6 +18,13 @@
 #define SHORTCUT_FIELD_CAPACITY 384
 #define SHORTCUT_START_MENU 's'
 #define SHELL_FOLDERS_KEY L"System\\Explorer\\Shell Folders"
+
+typedef BOOL (WINAPI *create_shortcut_function)(LPWSTR, LPWSTR);
+
+static BOOL create_shortcut(WCHAR *shortcut, WCHAR *target) {
+    create_shortcut_function create = (create_shortcut_function)jolt_optional(L"SHCreateShortcut");
+    return create && create(shortcut, target);
+}
 
 static void guest_root(WCHAR *path) {
     session_path(path, L"root");
@@ -158,7 +166,7 @@ void desktop_shortcut(const char *request) {
         report("\r\njolt: shortcut folder not found\r\n");
     } else if (!shortcut_target(wide_command, target)) {
         report("\r\njolt: shortcut command too long\r\n");
-    } else if (!SHCreateShortcut(shortcut, target)) {
+    } else if (!create_shortcut(shortcut, target)) {
         report("\r\njolt: could not create shortcut\r\n");
     }
 }

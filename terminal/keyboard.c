@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "keyboard.h"
+#include "optional.h"
 #include "display.h"
 #include "session.h"
 #include "tty.h"
@@ -161,13 +162,15 @@ void keyboard_character(WPARAM character) {
     tty_input(character == ASCII_BACKSPACE ? ASCII_DELETE : (char)character);
 }
 
-BOOL AllKeys(BOOL all_keys);
+typedef BOOL (WINAPI *all_keys_function)(BOOL);
 
 static int window_active = 1;
 static int hotkeys_wanted;
 
 static void apply_capture(void) {
-    AllKeys(window_active && (key_log_remaining || hotkeys_wanted));
+    static all_keys_function all_keys;
+    if (!all_keys) all_keys = (all_keys_function)jolt_optional(L"AllKeys");
+    if (all_keys) all_keys(window_active && (key_log_remaining || hotkeys_wanted));
 }
 
 static void stop_log(void) {

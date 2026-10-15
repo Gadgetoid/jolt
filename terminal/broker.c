@@ -5,12 +5,12 @@
 #include "session.h"
 #include "tty.h"
 #include "kernel.h"
+#include "optional.h"
 #include "digest.h"
 #include "network.h"
 #include "sound.h"
 #include "serial.h"
 #include "guest-manifest.h"
-#include <jornada/sdk/wincrypt.h>
 
 #define IMAGE_FILE L"busybox.elf"
 #define WORKER_FILE L"JoltWorker.exe"
@@ -25,12 +25,6 @@
 #define DIGEST_SIZE 32
 
 #define INIT_PATH "/bin/sh"
-#ifndef PROV_RSA_FULL
-#define PROV_RSA_FULL 1
-#endif
-#ifndef CRYPT_VERIFYCONTEXT
-#define CRYPT_VERIFYCONTEXT 0xF0000000UL
-#endif
 #define LOGIN_NAME "-sh"
 #define COMMAND_OPTION "-c"
 #define HOLD_SUFFIX "; exec sh"
@@ -111,12 +105,7 @@ static void write_init_arguments(char *arguments) {
 }
 
 static void seed_entropy(BYTE *entropy) {
-    HCRYPTPROV provider;
-    if (CryptAcquireContextW(&provider, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
-        BOOL filled = CryptGenRandom(provider, JOLT_ENTROPY_SIZE, entropy);
-        CryptReleaseContext(provider, 0);
-        if (filled) return;
-    }
+    if (jolt_crypt_random(entropy, JOLT_ENTROPY_SIZE)) return;
     DWORD mix[JOLT_ENTROPY_SIZE / sizeof(DWORD)];
     MEMORYSTATUS memory;
     memory.dwLength = sizeof memory;

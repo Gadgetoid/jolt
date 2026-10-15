@@ -13,6 +13,7 @@
 #include "fonts.h"
 #include "bitmapfont.h"
 #include "canvas.h"
+#include "optional.h"
 
 #define ORIGIN_X 2
 #define ORIGIN_Y 0
@@ -729,8 +730,11 @@ void display_destroy(void) {
     memset(&view, 0, sizeof view);
 }
 
+typedef HBITMAP (WINAPI *load_bitmap_function)(LPCWSTR);
+
 void display_show_splash(const WCHAR *path) {
-    view.splash = SHLoadDIBitmap(path);
+    load_bitmap_function load = (load_bitmap_function)jolt_optional(L"SHLoadDIBitmap");
+    view.splash = load ? load(path) : NULL;
     view.splash_loaded = view.splash != NULL;
     if (!view.splash) return;
     invalidate_all();

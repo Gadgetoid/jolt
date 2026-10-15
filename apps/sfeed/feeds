@@ -1,0 +1,32 @@
+#!/bin/sh
+directory="$HOME/.sfeed"
+config="$directory/sfeedrc"
+export SFEED_URL_FILE="$directory/read"
+if [ ! -f "$config" ]; then
+    mkdir -p "$directory"
+    cp /usr/share/sfeed/sfeedrc.example "$config"
+    echo "feeds: created $config with some example feeds"
+fi
+[ -f "$SFEED_URL_FILE" ] || : > "$SFEED_URL_FILE"
+case "$1" in
+    add)
+        if [ $# -ne 3 ]; then
+            echo "usage: feeds add NAME URL" >&2
+            exit 1
+        fi
+        sed -i "/^}/i\\	feed \"$2\" \"$3\"" "$config"
+        echo "feeds: added $2, run 'feeds update' to fetch it"
+        exit 0
+        ;;
+    edit) exec ${EDITOR:-vi} "$config" ;;
+    update) exec sfeed_update "$config" ;;
+    "") ;;
+    *)
+        echo "usage: feeds [update|edit|add NAME URL]" >&2
+        exit 1
+        ;;
+esac
+if ! ls "$directory/feeds/"* > /dev/null 2>&1; then
+    sfeed_update "$config" || exit 1
+fi
+exec sfeed_curses "$directory/feeds/"*

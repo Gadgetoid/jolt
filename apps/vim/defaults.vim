@@ -1,6 +1,8 @@
 set nocompatible
 set backspace=indent,eol,start
 set history=200
+set ttimeout
+set ttimeoutlen=100
 set ruler
 set showcmd
 set incsearch

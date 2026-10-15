@@ -1,0 +1,7 @@
+mkdir -p /tmp/www && printf '%s' '<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><title>Local</title><entry><title>JoLT feed entry</title><link href="http://127.0.0.1:8082/one"/><id>one</id><updated>2026-10-15T12:00:00Z</updated><content type="html">&lt;p&gt;Feed body&lt;/p&gt;</content></entry></feed>' > /tmp/www/atom.xml
+httpd -p 8082 -h /tmp/www
+export HOME=/tmp/home
+printf '%s\n' 'feeds() {' '}' > /tmp/rc; mkdir -p /tmp/home/.sfeed && cp /tmp/rc /tmp/home/.sfeed/sfeedrc
+feeds add local http://127.0.0.1:8082/atom.xml
+feeds
+@wait 10000

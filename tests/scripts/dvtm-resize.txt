@@ -1,7 +1,12 @@
-(sleep 8; jolt fs) & dvtm
-@wait 12000
+dvtm
+@wait 4000
+jolt fs
+@wait 3000
+jolt font 12
+@wait 3000
 stty size
 @wait 2000
 \x07qq\c
 @wait 3000
+jolt font 16
 exit 0

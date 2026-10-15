@@ -1,112 +1,131 @@
 # JoLT - Jornada Linux Terminal
 
-## Required
+## Done
 
-Startup splash into a usable terminal/shell, "exit" exits back to desktop - DONE
-A nice ASCII welcome message - DONE
-A custom "help" command explaining how to use the system - DONE (as `jolt help`)
-Busybox, vim
-Which shell should we use?
-NETWORK SUPPORT??
+### Basics
 
-## Wishlist
+- Startup splash into a usable terminal and shell; `exit` returns to the desktop
+- ASCII welcome message
+- `jolt help` explaining how to use the system
+- BusyBox ash as the login shell, with history saved between sessions
 
-### More BusyBox applets (config only) - DONE (162 applets incl. usage text, full find/grep/xargs/less options; bzip2 needs -1 to -6, memory)
+### BusyBox
 
+- 162 applets, including usage text and full find, grep, xargs and less options; bzip2 needs -1 to -6 for memory
 - Archives: tar, gzip/gunzip, bzip2, unzip
 - Inspection: od, xxd, strings, base64, du
 - Text: nl, paste, fold, rev, comm, cal
 - Misc: bc/dc, time, watch, patch, ed, free, uptime
-- df (needs statfs) - DONE
-- ps, top, pstree (needs a synthetic /proc from the broker process table) - DONE
+- df (statfs)
+- ps, top, pstree (synthetic /proc from the broker process table)
+- script (ptys)
 
-### Run more than one binary
+### Programs
 
-- Loader runs ELF programs other than busybox.elf - DONE (JoLT ABI note instead of a hash manifest; JOLT_ALLOW_UNMARKED=1 overrides)
-- Lua - DONE (5.4.7)
-- nano - DONE (9.2)
-- bash - DONE (5.3, optional; ash stays the login shell)
-- mg or kilo
-- jq - DONE (1.8.2)
-- ncdu - DONE (1.22)
-- htop - DONE (3.5.3)
-- joltfetch, a neofetch for JoLT - DONE (/proc/jolt carries the CE details)
-- sqlite3 shell
-- frotz - DONE (2.55, with Zork I-III under MIT as `zork [1|2|3]`)
-- vim (tiny feature set, builtin termcap) - DONE (Vim 9.2 tiny over ncurses 6.6; normal needs a larger image limit)
-- MicroPython UNIX port - DONE (1.29; no threads, FFI or SSL)
-- ping and traceroute via CE IcmpSendEcho (WsControl) behind emulated raw ICMP sockets - DONE (traceroute uses -I; multi-hop untested in the emulator)
-- SQLite as a shared library linked into Lua (lsqlite3) and MicroPython (usqlite), plus the sqlite3 shell; no WAL/mmap, threads off, fcntl locks are a no-op today
-- NetHack
+- Loader runs ELF programs other than busybox.elf (JoLT ABI note instead of a hash manifest; JOLT_ALLOW_UNMARKED=1 overrides)
+- Lua 5.4.7
+- nano 9.2
+- bash 5.3 (optional; ash stays the login shell; /etc/bash.bashrc with completion for `jolt`)
+- jq 1.8.2
+- ncdu 1.22
+- htop 3.5.3
+- joltfetch, a neofetch for JoLT (/proc/jolt carries the CE details)
+- frotz 2.55, with Zork I-III under MIT as `zork [1|2|3]`
+- Vim 9.2 tiny over ncurses 6.6
+- MicroPython 1.29 UNIX port (no threads, FFI or SSL)
+- dvtm 0.15 (narrow ncurses; dvtm and dvtm-256color terminfo built into the ncurses fallbacks)
 
 ### Serial
 
-- /dev/ttyS0 backed by CE COM1:, termios baud/parity mapped to DCB - DONE (/dev/ttyS0-3 = COM1:-COM4:, JoLT-Term owns the ports; raw, no line discipline; data path untested until the emulator exposes COM4)
-- BusyBox microcom - DONE
-- Shell on a serial port - DONE (`jolt serial-shell`: BusyBox script relays the port to a pty; serial close now drains output, reopen race fixed)
-- picocom
+- /dev/ttyS0-3 backed by CE COM1:-COM4:, termios baud and parity mapped to DCB; JoLT-Term owns the ports; raw, no line discipline
+- Output drains before a port closes
+- BusyBox microcom
+- `jolt serial-shell`: BusyBox script relays a serial port to a pty running a login shell
 
 ### Networking
 
-- Sockets backed by Winsock (TCP, UDP, select/poll), /etc/resolv.conf - DONE (sockets owned by JoLT-Term, DNS via CE)
-- BusyBox nc, wget, telnet, ftpget/ftpput, httpd - DONE (plus tftp, whois, nslookup)
-- Dropbear dbclient (ssh) - DONE (dbclient, dropbearkey; CryptoAPI randomness)
-- HTTPS in wget - DONE (BusyBox TLS 1.2 via ssl_client helper over socketpair; no certificate validation)
-- HTTPS in links (LibreSSL) and curl (Mbed TLS) with certificate verification against the Mozilla CA bundle in /etc/ssl/cert.pem - DONE
-- links (text mode browser) - DONE (HTTPS via LibreSSL)
+- Sockets backed by Winsock (TCP, UDP, select/poll), owned by JoLT-Term; DNS via CE, /etc/resolv.conf
+- BusyBox nc, wget, telnet, ftpget/ftpput, httpd, tftp, whois, nslookup, ntpd
+- ping and traceroute (-I) through CE's ICMP echo (WsControl) behind emulated raw ICMP sockets; multi-hop untested in the emulator
+- Dropbear dbclient (ssh) and dropbearkey, CryptoAPI randomness
+- HTTPS in wget (BusyBox TLS 1.2 via ssl_client over socketpair; no certificate validation)
+- HTTPS in links (LibreSSL) and curl (Mbed TLS), verified against the Mozilla CA bundle in /etc/ssl/cert.pem
+- links text-mode browser
 
 ### Terminal
 
-- Colour and bold rendering - DONE (classic and Solarized themes)
-- Font choice - DONE (TrueType from /usr/share/fonts via AddFontResource: DejaVu Sans Mono, Liberation Mono; CE fonts by name)
-- Bitmap fonts drawn by JoLT (Terminus, Spleen) if TrueType is too ragged at small sizes
-- Windows key: Win+key shortcuts, a second bank of hot keys, or an on-screen overlay (memory, programs, theme, font)
-- ncurses with a minimal terminfo entry - DONE (ncurses 6.6, built-in fallbacks, TERM=xterm-256color)
-- ptys (/dev/ptmx, /dev/pts/*) - DONE (4 ptys; line discipline shared by console and ptys in common/tty.c; controlling terminals, TIOCSCTTY, hangup on master close; BusyBox script)
-- dvtm (multiplexer) - DONE (0.15 over narrow ncurses; dvtm and dvtm-256color terminfo built into ncurses fallbacks)
-- abduco (needs AF_UNIX sockets bound to paths)
+- Colour and bold rendering, classic and Solarized themes, light and dark
+- Font choice: TrueType from /usr/share/fonts via AddFontResource (DejaVu Sans Mono, Liberation Mono) or CE fonts by name
+- Ctrl+Shift+F toggles full screen
+- ncurses with built-in terminfo fallbacks, TERM=xterm-256color
+- ptys: /dev/ptmx and /dev/pts/0-3; line discipline shared by the console and ptys (common/tty.c); controlling terminals, TIOCSCTTY, hangup on master close; /proc/PID/fd links
+- HP hot keys run commands or terminal settings (`@toggle`, `@font+`) from /etc/hotkeys
 
 ### Audio
 
-- Terminal bell (`\a`) - DONE (MessageBeep)
-- PC speaker tier: KIOCSOUND/KDMKTONE ioctls on the tty synthesised as a square wave through waveOut, BusyBox beep - DONE (tone stops when its owner exits)
-- /dev/dsp (OSS): write() PCM into waveOut buffers, SNDCTL_DSP_SPEED/SETFMT/CHANNELS mapped to WAVEFORMATEX
-- Players on top of /dev/dsp (e.g. a tracker or mp3 decoder, CPU permitting)
-
-### Pocket Outlook data
-
-- `jolt sync` (or similar): export CE databases (Contacts, Calendar, Tasks, Inbox via CEDB) read-only as CSV/JSON for jq, Lua or Python; maybe write back later
+- Terminal bell (`\a`) via MessageBeep
+- PC speaker: KIOCSOUND/KDMKTONE on the tty synthesised as a square wave through waveOut, BusyBox beep; the tone stops when its owner exits
 
 ### Files
 
-- `jolt mount "/real path" /mountpoint`: map CE folders into the guest tree (DOSBox-style) - DONE (mount -t cefs, /etc/fstab, /proc/mounts)
+- `jolt mount`: map CE folders into the guest tree (mount -t cefs, /etc/fstab, /proc/mounts)
 
 ### CE integration
 
-- /dev/clipboard backed by the CE clipboard - DONE (UTF-8 and LF in Linux, UTF-16 and CRLF on CE)
-- Battery status - DONE (/proc/apm, `jolt battery`)
-- `jolt open FILE` with the associated CE application - DONE (ShellExecuteEx)
-- JoLT icon - DONE (from the splash bolt)
-- Shortcuts that run a command - DONE (JoLT-Term.exe [--hold] -e "COMMAND", `jolt shortcut [-s] NAME COMMAND`)
-- More than one JoLT window at a time (single-instance guard today; a second launch focuses the first)
-
-### Known issues
-
-- Vim: deleting does not remove characters, other display quirks - FIXED (TERM=xterm-256color, keys encoded by libvterm, terminal query replies)
-- Trailing slash is dropped in path lookup, so `file/` resolves as `file` - FIXED
+- /dev/clipboard backed by the CE clipboard (UTF-8 and LF in Linux, UTF-16 and CRLF on CE)
+- Battery status (/proc/apm, `jolt battery`)
+- `jolt open FILE` with the associated CE application (ShellExecuteEx)
+- JoLT icon, from the splash bolt
+- Shortcuts that run a command (JoLT-Term.exe [--hold] -e "COMMAND", `jolt shortcut [-s] NAME COMMAND`)
 
 ### Performance
 
-- Process start: BusyBox text aliased from the shared image with VirtualCopy (no copy on fork or exec), batched commit/decommit, AT_RANDOM from a shared entropy pool instead of CryptoAPI per process. About 4x faster `ls` in the emulator (100 ms to 26 ms).
-- App images cached in named shared mappings keyed by path, size and mtime, text aliased with VirtualCopy while any process uses them. Nested `bash -c :` 3x faster in the emulator. VirtualCopy needs source and destination at the same offset within 64 KB, so the ELF starts at the view base.
-- Next: fork setup (spare hand-off, ~20 ms), keep recently used app images warm after their last process exits
+- BusyBox text aliased from the shared image with VirtualCopy (no copy on fork or exec), batched commit and decommit, AT_RANDOM from a shared entropy pool instead of CryptoAPI per process. About 4x faster `ls` in the emulator (100 ms to 26 ms).
+- App images cached in named shared mappings keyed by path, size and mtime, with text aliased by VirtualCopy while any process uses them. Nested `bash -c :` 3x faster in the emulator. VirtualCopy needs source and destination at the same offset within 64 KB, so the ELF starts at the view base.
 
-## Possible?
+### Fixed issues
 
-Tiny Core Linux style design? with expansion apps shipped somewhat like .tcz? - Or could `/Storage Card/JoLT/root/usr/bin` just contain runnable user apps with no need for containers?
+- Vim: deleting did not remove characters, other display quirks (TERM=xterm-256color, keys encoded by libvterm, terminal query replies)
+- Trailing slash was dropped in path lookup, so `file/` resolved as `file`
+- dvtm missed resizes (pselect ignored its signal mask)
 
-How would installing packages work? apt? our own index somewhere. Hosted in GitHub pages?
+## Wishlist
 
-## Moon shots?
+### Programs
 
-X server for running simple windowed apps, or a even full lite desktop?
+- mg or kilo
+- SQLite as a shared library linked into Lua (lsqlite3) and MicroPython (usqlite), plus the sqlite3 shell; no WAL or mmap, threads off, fcntl locks are a no-op today
+- NetHack
+- Vim normal build with sh, Python and Lua syntax (the image limit is raised now)
+- picocom
+- abduco (needs AF_UNIX sockets bound to paths)
+
+### Terminal
+
+- Bitmap fonts drawn by JoLT (Spleen, Terminus) for sharper small sizes
+- Windows key: Win+key shortcuts, a second bank of hot keys, or an on-screen overlay (memory, programs, theme, font)
+- More than one JoLT window at a time (single-instance guard today; a second launch focuses the first)
+
+### Audio
+
+- /dev/dsp (OSS): write() PCM into waveOut buffers, SNDCTL_DSP_SPEED/SETFMT/CHANNELS mapped to WAVEFORMATEX
+- Players on top of /dev/dsp (a tracker or mp3 decoder, CPU permitting)
+
+### Pocket Outlook data
+
+- `jolt sync` (or similar): export CE databases (Contacts, Calendar, Tasks, Inbox via CEDB) read-only as CSV or JSON for jq, Lua or Python; maybe write back later
+
+### Performance and robustness
+
+- Faster fork setup (spare hand-off, about 20 ms)
+- Keep recently used app images warm after their last process exits
+- Workers exit when JoLT-Term dies; a watchdog
+
+### Possible?
+
+- Tiny Core Linux style expansion apps, like .tcz? Or could `/Storage Card/JoLT/root/usr/bin` just hold runnable user apps with no need for containers?
+- Installing packages: our own index somewhere, hosted on GitHub Pages?
+
+### Moon shots
+
+- X server for simple windowed apps, or even a full lite desktop

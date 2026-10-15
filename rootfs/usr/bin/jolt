@@ -51,7 +51,7 @@ battery() {
 }
 
 osc() {
-    printf '\033]7770;%s\007' "$1"
+    printf '\033]7770;%s\007' "$1" > /dev/console
 }
 
 case "$1" in

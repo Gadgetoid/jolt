@@ -264,18 +264,53 @@ These live in `/usr/bin`:
 
 ## Windows with dvtm
 
-`dvtm` splits the screen into several terminals, each with its own shell. Commands start with Ctrl+G:
+`dvtm` splits the screen into several terminals, each running its own shell. Start it with `dvtm`. It opens one window; add more as you need them.
+
+Every dvtm command is Ctrl+G followed by a key. Ctrl+G twice sends a real Ctrl+G to the program in the window.
+
+### Windows
 
 | Keys | Action |
 | --- | --- |
-| Ctrl+G c | New window |
-| Ctrl+G j / Ctrl+G k | Next / previous window |
-| Ctrl+G Enter | Swap the current window into the main area |
-| Ctrl+G f / g / b / m | Layout: tiled, grid, bottom stack, full screen |
+| Ctrl+G c | New window with a shell |
 | Ctrl+G x x | Close the current window |
-| Ctrl+G q q | Quit dvtm |
+| Ctrl+G j / Ctrl+G k | Next / previous window |
+| Ctrl+G 1 to Ctrl+G 4 | Jump to window 1 to 4 |
+| Ctrl+G Tab | Back to the last window you used |
+| Ctrl+G Enter | Swap the current window into the main area |
+| Ctrl+G . | Minimise or restore the current window |
+| Ctrl+G q q | Quit dvtm and every window in it |
 
-JoLT has 4 pseudo terminals, so dvtm can have up to 4 windows. Use a smaller font (`jolt font 12`) to give each one more room.
+### Layout and sizing
+
+| Keys | Action |
+| --- | --- |
+| Ctrl+G f | Tiled: one main window on the left, the rest stacked on the right |
+| Ctrl+G b | Bottom stack: main window on top, the rest side by side below |
+| Ctrl+G g | Grid |
+| Ctrl+G m | Full screen: only the current window |
+| Ctrl+G Space | Cycle through the layouts |
+| Ctrl+G h / Ctrl+G l | Make the main area smaller / bigger (5% a press) |
+| Ctrl+G i / Ctrl+G d | More / fewer windows in the main area |
+| Ctrl+G s | Hide or show the status bar |
+| Ctrl+G r | Redraw the screen |
+
+Each window's size follows the layout, so `h` and `l` resize the main window and everything beside it at once. Programs inside are told their new size, so vim and htop redraw to fit.
+
+### Scrolling back
+
+| Keys | Action |
+| --- | --- |
+| Ctrl+G PgUp / Ctrl+G PgDn | Scroll the current window's history (PgUp is Alt+Up on the Jornada) |
+
+JoLT's own Shift+PgUp scrolls the whole screen, not a single dvtm window, so use dvtm's keys instead.
+
+### Tips
+
+- JoLT has 4 pseudo terminals, so dvtm can have up to 4 windows, fewer if `script` or `jolt serial-shell` are using one.
+- Smaller fonts give each window more room: at `jolt font 12` in full screen, two tiled windows are about 53 columns each.
+- `jolt fs`, `jolt font` and the other settings work from inside a dvtm window, as do Ctrl+Shift+F and the hot keys. dvtm resizes to match.
+- Programs inside dvtm see `TERM=dvtm-256color`, which JoLT's programs understand.
 
 ## BusyBox commands
 

@@ -14,3 +14,4 @@ struct theme {
 
 int theme_load(const char *name, int dark, struct theme *theme);
 int theme_valid_name(const char *name);
+int theme_exists(const char *name);

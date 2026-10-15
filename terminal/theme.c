@@ -99,3 +99,8 @@ int theme_load(const char *name, int dark, struct theme *theme) {
     LocalFree(text);
     return found;
 }
+
+int theme_exists(const char *name) {
+    struct theme theme;
+    return theme_load(name, 1, &theme) || theme_load(name, 0, &theme);
+}

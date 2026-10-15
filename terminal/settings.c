@@ -131,16 +131,16 @@ static void report_missing(const char *kind, const char *name) {
 void settings_command(const char *command) {
     struct display_settings previous = current;
     if (apply_command(command)) {
-        display_apply(&current);
-        int face_missing = display_face_missing() && strcmp(current.face, previous.face);
-        int theme_missing = display_theme_missing() && strcmp(current.theme, previous.theme);
-        if (face_missing) report_missing("fixed-width font", current.face);
-        if (theme_missing) report_missing("theme", current.theme);
-        if (face_missing || theme_missing) {
+        if (current.face[0] && strcmp(current.face, previous.face) && !display_face_available(current.face)) {
+            report_missing("fixed-width font", current.face);
             current = previous;
+        } else if (strcmp(current.theme, previous.theme) && !theme_exists(current.theme)) {
+            report_missing("theme", current.theme);
+            current = previous;
+        } else {
             display_apply(&current);
+            save();
         }
-        save();
     }
     keyboard_set_hotkeys(hotkeys_engaged(&current));
 }

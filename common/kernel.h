@@ -3,7 +3,7 @@
 #include "linux.h"
 
 #define JOLT_KERNEL_MAGIC 0x4a4f4c4bUL
-#define JOLT_KERNEL_VERSION 16
+#define JOLT_KERNEL_VERSION 18
 #define JOLT_PROCESSES 16
 #define JOLT_DESCRIPTIONS 48
 #define JOLT_PIPES 12
@@ -28,6 +28,13 @@
 #define JOLT_WARM_MESSAGE (WM_USER + 4)
 #define JOLT_WARM_IMAGES 8
 #define JOLT_DIAGNOSTIC 192
+#define JOLT_WAIT_ANY 0
+#define JOLT_WAIT_TTY_INPUT(tty) (0x100 | (tty))
+#define JOLT_WAIT_TTY_OUTPUT(tty) (0x200 | (tty))
+#define JOLT_WAIT_TTY_SPACE(tty) (0x300 | (tty))
+#define JOLT_WAIT_PIPE_DATA(pipe) (0x400 | (pipe))
+#define JOLT_WAIT_PIPE_SPACE(pipe) (0x500 | (pipe))
+#define JOLT_WAIT_TIMER 0x600
 #define JOLT_MOUNTS 8
 #define JOLT_SERIAL_PORTS 4
 #define JOLT_SERIAL_BUFFER 4096
@@ -97,6 +104,7 @@ struct jolt_process {
     DWORD fatal;
     DWORD ignored;
     DWORD waiting;
+    LONG wait_object;
     DWORD signal_time;
     DWORD stopped;
     DWORD stop_signal;
@@ -146,6 +154,7 @@ struct jolt_tty {
     LONG opened;
     LONG session, foreground;
     WORD rows, columns;
+    WORD width, height;
     struct linux_termios termios;
     volatile LONG output_written, output_read, output_notified;
     volatile LONG input_written, input_read;
@@ -201,12 +210,14 @@ void jolt_lock(void);
 void jolt_unlock(void);
 void jolt_wake(int slot);
 void jolt_wake_all(void);
+void jolt_wake_object(LONG object);
 int jolt_find_pid(LONG pid);
 void jolt_signal_process(int slot, int signal);
 void jolt_signal_group(LONG group, int signal);
 void jolt_notify_parent(int slot);
 int jolt_description_alloc(DWORD type, DWORD flags, const char *path);
 void jolt_description_release(int index);
+void jolt_release_device(DWORD type, LONG tty, DWORD port);
 int jolt_fd_install(struct jolt_process *process, int minimum, int description, int cloexec);
 void jolt_fd_close(struct jolt_process *process, int fd);
 void jolt_process_exit(int slot, DWORD status);
@@ -220,5 +231,5 @@ DWORD jolt_tty_master_write(int tty, const char *bytes, DWORD length);
 void jolt_tty_input(int tty, char character);
 void jolt_tty_discard_input(int tty);
 void jolt_tty_hang_up(int tty);
-void jolt_tty_resize(int tty, WORD rows, WORD columns);
+void jolt_tty_resize(int tty, WORD rows, WORD columns, WORD width, WORD height);
 void jolt_tty_release_end(int tty, int master);

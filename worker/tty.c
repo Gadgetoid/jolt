@@ -7,8 +7,6 @@
 #include "network.h"
 #include "serial.h"
 
-#define CHARACTER_WIDTH 8
-#define CHARACTER_HEIGHT 16
 #define VTIME_UNIT_MILLISECONDS 100
 
 static struct jolt_tty *tty_at(int index) {
@@ -71,6 +69,7 @@ LONG tty_read(int index, char *buffer, DWORD length, int nonblocking) {
             return result;
         }
         self->waiting = WAIT_TTY;
+        self->wait_object = JOLT_WAIT_TTY_INPUT(index);
         jolt_unlock();
         block_until(timeout);
     }
@@ -98,7 +97,7 @@ LONG pty_master_read(int index, char *buffer, DWORD length, int nonblocking) {
                 buffer[position] = tty->output[(consumed + position) % JOLT_TTY_SIZE];
             InterlockedExchange(&tty->output_read, (LONG)(consumed + count));
             self->waiting = WAIT_NONE;
-            jolt_wake_all();
+            jolt_wake_object(JOLT_WAIT_TTY_SPACE(index));
             jolt_unlock();
             return (LONG)count;
         }
@@ -112,6 +111,7 @@ LONG pty_master_read(int index, char *buffer, DWORD length, int nonblocking) {
             return result;
         }
         self->waiting = WAIT_PIPE;
+        self->wait_object = JOLT_WAIT_TTY_OUTPUT(index);
         jolt_unlock();
         block_until(INFINITE);
     }
@@ -212,15 +212,15 @@ static LONG get_window_size(const struct jolt_tty *tty, DWORD pointer) {
     struct linux_winsize size;
     size.rows = tty->rows;
     size.columns = tty->columns;
-    size.x_pixels = (WORD)(size.columns * CHARACTER_WIDTH);
-    size.y_pixels = (WORD)(size.rows * CHARACTER_HEIGHT);
+    size.x_pixels = tty->width;
+    size.y_pixels = tty->height;
     return guest_copy_out(pointer, &size, sizeof size) ? 0 : error(LINUX_EFAULT);
 }
 
 static LONG set_window_size(int index, DWORD pointer) {
     struct linux_winsize size;
     if (!guest_copy_in(&size, pointer, sizeof size)) return error(LINUX_EFAULT);
-    if (index != JOLT_CONSOLE) jolt_tty_resize(index, size.rows, size.columns);
+    if (index != JOLT_CONSOLE) jolt_tty_resize(index, size.rows, size.columns, size.x_pixels, size.y_pixels);
     return 0;
 }
 

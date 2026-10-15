@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <wchar.h>
-#include <shellapi.h>
 #include <vterm.h>
 #include "display.h"
 #include "scrollback.h"
@@ -32,6 +31,9 @@
 #define NOTICE_CAPACITY 128
 #define DRAIN_BUDGET_MILLISECONDS 30
 #define FRAME_MILLISECONDS 33
+#define LATENCY_SAMPLES 32
+#define DEFAULT_CELL_WIDTH 8
+#define DEFAULT_CELL_HEIGHT 16
 #define TASKBAR_CLASS L"HHTaskBar"
 #define WINDOWED_STYLE (WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_VSCROLL)
 #define FULLSCREEN_STYLE (WS_VISIBLE | WS_POPUP)
@@ -43,10 +45,12 @@ struct display_state {
     VTermScreen *screen;
     HFONT font, bold_font;
     WCHAR family[LF_FACESIZE];
-    int face_missing;
     struct bitmap_font bitmap;
     struct canvas canvas;
     DWORD painted;
+    DWORD key_tick;
+    DWORD latencies[LATENCY_SAMPLES];
+    int latency_count, latency_next;
     int writing;
     char notice[NOTICE_CAPACITY];
     DWORD notice_length;
@@ -56,7 +60,7 @@ struct display_state {
     int shown_count, shown_rows, shown_scroll;
     struct display_settings settings;
     struct theme theme;
-    int theme_loaded, theme_missing;
+    int theme_loaded;
     HBRUSH background_brush, foreground_brush;
     HBITMAP splash;
     int splash_loaded;
@@ -282,6 +286,12 @@ void display_paint(void) {
     }
     EndPaint(view.window, &paint);
     view.painted = GetTickCount();
+    if (view.key_tick) {
+        view.latencies[view.latency_next] = view.painted - view.key_tick;
+        view.latency_next = (view.latency_next + 1) % LATENCY_SAMPLES;
+        if (view.latency_count < LATENCY_SAMPLES) view.latency_count++;
+        view.key_tick = 0;
+    }
 }
 
 static void update_scrollbar(void) {
@@ -588,15 +598,10 @@ static int ensure_canvas(int rows, int columns) {
 
 static void load_fonts(void) {
     WCHAR family[LF_FACESIZE];
-    view.face_missing = 0;
     refill_canvas();
-    if (view.settings.face[0]) {
-        if (load_bitmap_font()) return;
-        bitmap_font_free(&view.bitmap);
-        if (resolve_face(family) && create_fonts(family, 1, view.settings.font_height)) return;
-        view.face_missing = 1;
-    }
+    if (view.settings.face[0] && load_bitmap_font()) return;
     bitmap_font_free(&view.bitmap);
+    if (view.settings.face[0] && resolve_face(family) && create_fonts(family, 1, view.settings.font_height)) return;
     create_fonts(FONT_FACE, 0, view.settings.font_height);
 }
 
@@ -605,7 +610,7 @@ static void vterm_colour(VTermColor *colour, COLORREF value) {
 }
 
 static void apply_theme(void) {
-    view.theme_missing = !theme_load(view.settings.theme, view.settings.dark, &view.theme);
+    theme_load(view.settings.theme, view.settings.dark, &view.theme);
     view.theme_loaded = 1;
     if (view.foreground_brush) DeleteObject(view.foreground_brush);
     if (view.background_brush) DeleteObject(view.background_brush);
@@ -640,10 +645,12 @@ void display_resize(void) {
     grid_size(&rows, &columns);
     if (columns < MINIMUM_COLUMNS || rows < MINIMUM_ROWS) return;
     if (ensure_canvas(rows, columns)) invalidate_all();
-    if (columns == console()->columns && rows == console()->rows) return;
+    WORD width = (WORD)(columns * view.cell_width), height = (WORD)(rows * view.cell_height);
+    if (columns == console()->columns && rows == console()->rows && width == console()->width &&
+        height == console()->height) return;
     vterm_set_size(view.terminal, rows, columns);
     vterm_screen_flush_damage(view.screen);
-    jolt_tty_resize(JOLT_CONSOLE, (WORD)rows, (WORD)columns);
+    jolt_tty_resize(JOLT_CONSOLE, (WORD)rows, (WORD)columns, width, height);
     if (view.scroll > scrollback_count()) view.scroll = scrollback_count();
     update_scrollbar();
     invalidate_all();
@@ -692,14 +699,16 @@ int display_create(HWND window, const struct display_settings *settings, display
     view.command_handler = handler;
     view.cursor_visible = 1;
     view.shown_count = view.shown_rows = view.shown_scroll = -1;
-    view.cell_width = 8;
-    view.cell_height = 16;
+    view.cell_width = DEFAULT_CELL_WIDTH;
+    view.cell_height = DEFAULT_CELL_HEIGHT;
     if (!scrollback_init()) return 0;
     load_fonts();
     int rows, columns;
     grid_size(&rows, &columns);
     console()->rows = (WORD)rows;
     console()->columns = (WORD)columns;
+    console()->width = (WORD)(columns * view.cell_width);
+    console()->height = (WORD)(rows * view.cell_height);
     ensure_canvas(rows, columns);
     view.terminal = vterm_new(rows, columns);
     if (!view.terminal) return 0;
@@ -781,12 +790,19 @@ DWORD display_describe(char *buffer, DWORD capacity) {
     return length > 0 ? (DWORD)length : 0;
 }
 
-int display_face_missing(void) {
-    return view.face_missing;
-}
-
-int display_theme_missing(void) {
-    return view.theme_missing;
+int display_face_available(const char *face) {
+    int heights[BITMAP_FONT_HEIGHTS];
+    if (bitmap_font_heights(face, heights)) return 1;
+    WCHAR family[LF_FACESIZE];
+    HDC dc = GetDC(view.window);
+    int found = fonts_resolve(dc, face, family);
+    ReleaseDC(view.window, dc);
+    if (!found) return 0;
+    HFONT font = create_font(view.settings.font_height, FW_NORMAL, family);
+    TEXTMETRICW metrics;
+    int fixed = font && measure_font(font, 1, &metrics);
+    if (font) DeleteObject(font);
+    return fixed;
 }
 
 void display_close(void) {
@@ -798,4 +814,25 @@ void display_close(void) {
 
 void display_key(VTermKey key, VTermModifier modifiers) {
     if (view.terminal) vterm_keyboard_key(view.terminal, key, modifiers);
+}
+
+void display_note_key(void) {
+    if (!view.key_tick) view.key_tick = GetTickCount();
+}
+
+void display_report_latency(void) {
+    char text[NOTICE_CAPACITY];
+    if (!view.latency_count) {
+        display_notice("jolt: no keystrokes measured yet\r\n");
+        return;
+    }
+    DWORD total = 0, worst = 0;
+    for (int index = 0; index < view.latency_count; index++) {
+        total += view.latencies[index];
+        if (view.latencies[index] > worst) worst = view.latencies[index];
+    }
+    DWORD last = view.latencies[(view.latency_next + LATENCY_SAMPLES - 1) % LATENCY_SAMPLES];
+    snprintf(text, sizeof text, "key to screen, last %d keys: average %lu ms, worst %lu ms, last %lu ms\r\n",
+        view.latency_count, total / (DWORD)view.latency_count, worst, last);
+    display_notice(text);
 }

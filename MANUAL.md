@@ -82,6 +82,7 @@ jolt COMMAND [ARGUMENTS]
 | `jolt shortcut [-s] NAME COMMAND` | Desktop shortcut that opens JoLT and runs `COMMAND` (`-s`: Start menu) |
 | `jolt hotkeys off\|fullscreen\|always` | When the HP hot keys run commands from `/etc/hotkeys` |
 | `jolt keys` | Show the next 20 keyboard messages JoLT receives |
+| `jolt latency` | How long your last 32 keystrokes took to reach the screen |
 | `jolt serial-shell [DEVICE [SPEED]]` | Run a login shell on a serial port, see [A shell over serial](#a-shell-over-serial) |
 | `jolt help` | Show help (also `-h`, `--help`) |
 

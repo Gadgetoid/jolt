@@ -60,7 +60,7 @@ LONG serial_open(int port) {
         }
         if (current == SERIAL_FAILED) {
             DWORD code = serial->error;
-            if (--serial->users <= 0) SetEvent(jolt.serial);
+            jolt_release_device(DESCRIPTION_SERIAL, JOLT_CONSOLE, (DWORD)port);
             jolt_unlock();
             return open_error(code);
         }

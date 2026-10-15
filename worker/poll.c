@@ -60,13 +60,14 @@ static int is_socket(DWORD fd) {
     return index >= 0 && description_at(index)->type == DESCRIPTION_SOCKET;
 }
 
-static LONG wait_or_interrupt(DWORD began, DWORD timeout, int sockets) {
+static LONG wait_or_interrupt(DWORD began, DWORD timeout, int sockets, int watching) {
     if (signal_ready()) {
         self->waiting = WAIT_NONE;
         jolt_unlock();
         return error(LINUX_EINTR);
     }
     self->waiting = WAIT_POLL;
+    if (!watching) self->wait_object = JOLT_WAIT_TIMER;
     jolt_unlock();
     DWORD left = remaining(began, timeout);
     block_until(sockets && left > SOCKET_POLL_MILLISECONDS ? SOCKET_POLL_MILLISECONDS : left);
@@ -92,7 +93,7 @@ static LONG poll_descriptors(DWORD pointer, DWORD count, DWORD timeout) {
             jolt_unlock();
             return ready;
         }
-        LONG interrupted = wait_or_interrupt(began, timeout, sockets);
+        LONG interrupted = wait_or_interrupt(began, timeout, sockets, count > 0);
         if (interrupted) return interrupted;
     }
 }
@@ -186,7 +187,7 @@ static LONG select_descriptors(DWORD count, DWORD read_set, DWORD write_set, DWO
             if (except_set) guest_copy_out(except_set, found.except, words * sizeof(DWORD));
             return ready;
         }
-        LONG interrupted = wait_or_interrupt(began, timeout, sockets);
+        LONG interrupted = wait_or_interrupt(began, timeout, sockets, count > 0);
         if (interrupted) return interrupted;
     }
 }

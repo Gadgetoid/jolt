@@ -25,7 +25,7 @@ static LONG pipe_read(int index, char *buffer, DWORD length) {
                 buffer[offset] = pipe->data[(pipe->read + offset) % JOLT_PIPE_SIZE];
             pipe->read += count;
             self->waiting = WAIT_NONE;
-            jolt_wake_all();
+            jolt_wake_object(JOLT_WAIT_PIPE_SPACE(description->pipe));
             jolt_unlock();
             return (LONG)count;
         }
@@ -39,6 +39,7 @@ static LONG pipe_read(int index, char *buffer, DWORD length) {
             return result;
         }
         self->waiting = WAIT_PIPE;
+        self->wait_object = JOLT_WAIT_PIPE_DATA(description->pipe);
         jolt_unlock();
         block_until(INFINITE);
     }
@@ -71,7 +72,7 @@ static LONG pipe_write(int index, DWORD pipe_number, const char *buffer, DWORD l
             return done ? (LONG)done : error(LINUX_EPIPE);
         }
         DWORD count = pipe_put(pipe, buffer + done, length - done);
-        if (count) jolt_wake_all();
+        if (count) jolt_wake_object(JOLT_WAIT_PIPE_DATA(pipe_number));
         done += count;
         LONG stop = 0;
         if (done == length) stop = (LONG)done;
@@ -83,6 +84,7 @@ static LONG pipe_write(int index, DWORD pipe_number, const char *buffer, DWORD l
             return stop;
         }
         self->waiting = WAIT_PIPE;
+        self->wait_object = JOLT_WAIT_PIPE_SPACE(pipe_number);
         jolt_unlock();
         block_until(INFINITE);
     }
@@ -261,8 +263,7 @@ static LONG open_at(DWORD directory, DWORD path, DWORD flags) {
     int index = jolt_description_alloc(type, stored, absolute);
     if (index >= 0 && type == DESCRIPTION_SERIAL) description_at(index)->pipe = (DWORD)serial_port_of(absolute);
     if (index >= 0) description_at(index)->tty = terminal;
-    if (index < 0 && (type == DESCRIPTION_TTY || type == DESCRIPTION_PTY_MASTER)) jolt_tty_release_end(terminal, type == DESCRIPTION_PTY_MASTER);
-    if (index < 0 && type == DESCRIPTION_SERIAL && --kernel()->serial[serial_port_of(absolute)].users <= 0) SetEvent(jolt.serial);
+    if (index < 0) jolt_release_device(type, terminal, type == DESCRIPTION_SERIAL ? (DWORD)serial_port_of(absolute) : 0);
     int fd = index < 0 ? error(LINUX_ENFILE) : jolt_fd_install(self, 0, index, (flags & LINUX_O_CLOEXEC) != 0);
     if (index >= 0 && fd < 0) jolt_description_release(index);
     jolt_unlock();

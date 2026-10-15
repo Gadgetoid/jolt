@@ -104,6 +104,7 @@ static inline void block_until(DWORD timeout) {
         if (until_alarm < timeout) timeout = until_alarm;
     }
     WaitForSingleObject(jolt.wake[slot], timeout);
+    self->wait_object = JOLT_WAIT_ANY;
 }
 
 static inline DWORD remaining(DWORD began, DWORD timeout) {

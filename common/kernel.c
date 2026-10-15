@@ -96,6 +96,14 @@ void jolt_wake_all(void) {
         if (jolt.kernel->processes[slot].state != PROCESS_FREE) SetEvent(jolt.wake[slot]);
 }
 
+void jolt_wake_object(LONG object) {
+    for (int slot = 0; slot < JOLT_PROCESSES; slot++) {
+        const struct jolt_process *process = &jolt.kernel->processes[slot];
+        if (process->state == PROCESS_FREE || process->waiting == WAIT_NONE) continue;
+        if (process->wait_object == JOLT_WAIT_ANY || process->wait_object == object) SetEvent(jolt.wake[slot]);
+    }
+}
+
 int jolt_find_pid(LONG pid) {
     for (int slot = 0; slot < JOLT_PROCESSES; slot++) {
         struct jolt_process *process = &jolt.kernel->processes[slot];
@@ -171,6 +179,12 @@ static void commit_clipboard(const struct jolt_description *description) {
     if (jolt.kernel->window) PostMessageW((HWND)jolt.kernel->window, JOLT_CLIPBOARD_MESSAGE, 0, 0);
 }
 
+void jolt_release_device(DWORD type, LONG tty, DWORD port) {
+    if (type == DESCRIPTION_SERIAL && --jolt.kernel->serial[port].users <= 0) SetEvent(jolt.serial);
+    if (type == DESCRIPTION_TTY) jolt_tty_release_end(tty, 0);
+    if (type == DESCRIPTION_PTY_MASTER) jolt_tty_release_end(tty, 1);
+}
+
 void jolt_description_release(int index) {
     if (index < 0 || index >= JOLT_DESCRIPTIONS) return;
     struct jolt_description *description = &jolt.kernel->descriptions[index];
@@ -178,9 +192,7 @@ void jolt_description_release(int index) {
     if (description->type == DESCRIPTION_PIPE_READ) jolt.kernel->pipes[description->pipe].readers--;
     if (description->type == DESCRIPTION_PIPE_WRITE) jolt.kernel->pipes[description->pipe].writers--;
     commit_clipboard(description);
-    if (description->type == DESCRIPTION_SERIAL && --jolt.kernel->serial[description->pipe].users <= 0) SetEvent(jolt.serial);
-    if (description->type == DESCRIPTION_TTY) jolt_tty_release_end(description->tty, 0);
-    if (description->type == DESCRIPTION_PTY_MASTER) jolt_tty_release_end(description->tty, 1);
+    jolt_release_device(description->type, description->tty, description->pipe);
     if (description->type == DESCRIPTION_STREAM) {
         if (!(description->shutdown & JOLT_SHUTDOWN_READ)) jolt.kernel->pipes[description->pipe].readers--;
         if (!(description->shutdown & JOLT_SHUTDOWN_WRITE)) jolt.kernel->pipes[description->output].writers--;

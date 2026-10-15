@@ -20,7 +20,6 @@
 #define FATAL_SIGNAL_GRACE_MILLISECONDS 1500
 #define SPARE_RETRY_MILLISECONDS 1000
 #define SPARE_POLL_MILLISECONDS 1000
-#define SPARE_STOP_MILLISECONDS 5000
 #define COMMAND_CAPACITY 64
 #define DIGEST_SIZE 32
 
@@ -177,7 +176,7 @@ static void stop_spare(void) {
     jolt_unlock();
     SetEvent(jolt.refill);
     if (spare_thread) {
-        WaitForSingleObject(spare_thread, SPARE_STOP_MILLISECONDS);
+        WaitForSingleObject(spare_thread, INFINITE);
         CloseHandle(spare_thread);
         spare_thread = NULL;
     }

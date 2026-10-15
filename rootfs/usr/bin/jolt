@@ -17,6 +17,7 @@ usage() {
     echo "  shortcut [-s] NAME COMMAND  desktop shortcut (-s: Start menu) that runs COMMAND"
     echo "  hotkeys off|fullscreen|always  when HP hot keys run commands from /etc/hotkeys"
     echo "  keys  show the next 20 keyboard messages JoLT receives"
+    echo "  latency  how long recent keystrokes took to reach the screen"
     echo "  serial-shell [DEVICE [SPEED]]  run a login shell on a serial port (default /dev/ttyS0 115200)"
     echo "  help  this help (also -h)"
     echo "Shift+PgUp/PgDn or Shift+Up/Down scroll back through output."
@@ -184,6 +185,7 @@ case "$1" in
         ;;
     battery) battery ;;
     keys) osc keys ;;
+    latency) osc latency ;;
     serial-shell)
         device=${2:-/dev/ttyS0}
         speed=${3:-115200}

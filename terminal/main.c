@@ -174,6 +174,7 @@ static void run_command(const char *command) {
     if (!strncmp(command, "open=", strlen("open="))) desktop_open(command + strlen("open="));
     else if (!strncmp(command, "shortcut=", strlen("shortcut="))) desktop_shortcut(command + strlen("shortcut="));
     else if (!strcmp(command, "keys")) keyboard_start_log();
+    else if (!strcmp(command, "latency")) display_report_latency();
     else settings_command(command);
 }
 

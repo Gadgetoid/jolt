@@ -158,6 +158,7 @@ int keyboard_system_character(void) {
 }
 
 void keyboard_character(WPARAM character) {
+    display_note_key();
     if (session.finished || !character || character >= ASCII_LIMIT || character == ASCII_ESCAPE) return;
     tty_input(character == ASCII_BACKSPACE ? ASCII_DELETE : (char)character);
 }

@@ -43,6 +43,8 @@ int jolt_tty_open(void) {
         tty->locked = 1;
         tty->rows = console->rows;
         tty->columns = console->columns;
+        tty->width = console->width;
+        tty->height = console->height;
         jolt_tty_default_settings(&tty->termios);
         return index;
     }
@@ -52,7 +54,7 @@ int jolt_tty_open(void) {
 static void notify_output(int index) {
     struct jolt_kernel *kernel = jolt.kernel;
     if (index != JOLT_CONSOLE) {
-        jolt_wake_all();
+        jolt_wake_object(JOLT_WAIT_TTY_OUTPUT(index));
         return;
     }
     if (kernel->window && !InterlockedExchange(&tty_at(index)->output_notified, 1))
@@ -120,7 +122,7 @@ static void push_input(int index, const char *bytes, DWORD length) {
         tty->input[written++ % JOLT_INPUT_SIZE] = bytes[position];
     }
     InterlockedExchange(&tty->input_written, (LONG)written);
-    jolt_wake_all();
+    jolt_wake_object(JOLT_WAIT_TTY_INPUT(index));
 }
 
 void jolt_tty_discard_input(int index) {
@@ -197,7 +199,7 @@ static void canonical_input(int index, char character) {
         if (tty->line_length) push_input(index, tty->line, tty->line_length);
         else {
             tty->input_eof++;
-            jolt_wake_all();
+            jolt_wake_object(JOLT_WAIT_TTY_INPUT(index));
         }
         tty->line_length = 0;
         return;
@@ -246,12 +248,14 @@ DWORD jolt_tty_master_write(int index, const char *bytes, DWORD length) {
     return length;
 }
 
-void jolt_tty_resize(int index, WORD rows, WORD columns) {
+void jolt_tty_resize(int index, WORD rows, WORD columns, WORD width, WORD height) {
     jolt_lock();
     struct jolt_tty *tty = tty_at(index);
     int changed = tty->rows != rows || tty->columns != columns;
     tty->rows = rows;
     tty->columns = columns;
+    tty->width = width;
+    tty->height = height;
     if (changed && tty->foreground) jolt_signal_group(tty->foreground, LINUX_SIGWINCH);
     jolt_unlock();
 }

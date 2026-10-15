@@ -123,6 +123,7 @@ static LONG sleep_for(DWORD milliseconds) {
         jolt_lock();
         int interrupted = signal_ready();
         self->waiting = interrupted ? WAIT_NONE : WAIT_SLEEP;
+        self->wait_object = JOLT_WAIT_TIMER;
         jolt_unlock();
         if (interrupted) return error(LINUX_EINTR);
         block_until(left);

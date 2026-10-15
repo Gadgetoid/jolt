@@ -11,6 +11,7 @@
 #define START_ARGUMENT_LIMIT 63
 #define EXIT_STATUS_NOT_STARTED LINUX_WAIT_EXITED(127)
 #define TRACE_LINE_CAPACITY 256
+#define SLOT_MASK 0x01ffffffUL
 
 struct worker_state state;
 int slot = -1;
@@ -87,26 +88,29 @@ static int probe_commit(void) {
     return 1;
 }
 
+static DWORD slot_address(const void *address) {
+    return (DWORD)address & SLOT_MASK;
+}
+
 static int guest_layout_available(int report) {
-    MEMORY_BASIC_INFORMATION low, high;
-    memset(&low, 0, sizeof low);
-    memset(&high, 0, sizeof high);
-    if (!VirtualQuery((void *)GUEST_START, &low, sizeof low) ||
-        !VirtualQuery((void *)(GUEST_LIMIT - PAGE_SIZE), &high, sizeof high)) {
-        if (report) diagnose("worker: VirtualQuery of the guest range failed (error %lu)", GetLastError());
+    volatile BYTE stack_probe = 0;
+    if (VirtualAlloc((void *)GUEST_RESERVE_BASE, GUEST_RESERVE_LIMIT - GUEST_RESERVE_BASE, MEM_RESERVE, PAGE_NOACCESS) !=
+        (void *)GUEST_RESERVE_BASE) {
+        MEMORY_BASIC_INFORMATION area;
+        memset(&area, 0, sizeof area);
+        VirtualQuery((void *)GUEST_RESERVE_BASE, &area, sizeof area);
+        if (report) diagnose("worker: cannot reserve guest memory %08lx-%08lx (error %lu, base %08lx state %lx type %lx)",
+            GUEST_RESERVE_BASE, GUEST_RESERVE_LIMIT, GetLastError(), (DWORD)area.AllocationBase, area.State, area.Type);
         return 0;
     }
-    int one_reservation = low.AllocationBase && low.AllocationBase == high.AllocationBase;
-    int host_above_guest = ((DWORD)WinMain & 0x01ffffffUL) >= GUEST_LIMIT && ((DWORD)&state & 0x01ffffffUL) >= GUEST_LIMIT;
-    if (!one_reservation || !host_above_guest) {
-        if (report) diagnose("worker: guest range %08lx-%08lx not one reservation (bases %08lx/%08lx, state %lx type %lx, host %08lx)",
-            GUEST_START, GUEST_LIMIT, (DWORD)low.AllocationBase, (DWORD)high.AllocationBase, low.State, low.Type,
-            (DWORD)WinMain);
+    DWORD code = slot_address((const void *)WinMain), data = slot_address(&state), stack = slot_address((const void *)&stack_probe);
+    if (code >= GUEST_RESERVE_BASE || data >= GUEST_RESERVE_BASE || stack >= GUEST_RESERVE_BASE) {
+        if (report) diagnose("worker: host memory overlaps the guest range (code %08lx data %08lx stack %08lx)", code, data,
+            stack);
         return 0;
     }
     if (!probe_commit()) {
-        if (report) diagnose("worker: cannot commit guest memory at %08lx (error %lu, base %08lx state %lx type %lx)",
-            GUEST_LIMIT - PAGE_SIZE, GetLastError(), (DWORD)low.AllocationBase, low.State, low.Type);
+        if (report) diagnose("worker: cannot commit guest memory at %08lx (error %lu)", GUEST_LIMIT - PAGE_SIZE, GetLastError());
         return 0;
     }
     return 1;

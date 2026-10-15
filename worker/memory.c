@@ -58,12 +58,12 @@ LONG guest_string(DWORD pointer, char *buffer, DWORD capacity) {
 }
 
 static int page_committed(DWORD address) {
-    DWORD page = address / PAGE_SIZE;
+    DWORD page = (address - GUEST_START) / PAGE_SIZE;
     return (state.committed[page / 32] >> (page % 32)) & 1;
 }
 
 static void mark_page(DWORD address, int committed) {
-    DWORD page = address / PAGE_SIZE, bit = 1UL << (page % 32);
+    DWORD page = (address - GUEST_START) / PAGE_SIZE, bit = 1UL << (page % 32);
     if (committed) state.committed[page / 32] |= bit;
     else state.committed[page / 32] &= ~bit;
 }

@@ -9,7 +9,7 @@ PHDRS
 }
 SECTIONS
 {
-    . = 0x00010000 + SIZEOF_HEADERS;
+    . = 0x00c10000 + SIZEOF_HEADERS;
     .note.jolt : { KEEP(*(.note.jolt)) } :readonly :note
     .text : { *(.text .text.*) } :readonly
     .rodata : { *(.rodata .rodata.*) } :readonly

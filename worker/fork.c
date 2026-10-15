@@ -130,12 +130,12 @@ static int page_present(const DWORD *pages, DWORD page) {
 }
 
 static int page_is_text(DWORD page) {
-    DWORD address = page * PAGE_SIZE;
+    DWORD address = GUEST_START + page * PAGE_SIZE;
     return state.image_shared && address >= state.text_start && address < state.text_end;
 }
 
 static int copy_run(HANDLE source, DWORD first, DWORD last, int text) {
-    DWORD address = first * PAGE_SIZE, size = (last - first + 1) * PAGE_SIZE, count = 0;
+    DWORD address = GUEST_START + first * PAGE_SIZE, size = (last - first + 1) * PAGE_SIZE, count = 0;
     const BYTE *shared = text ? image_shared_data() + state.text_offset + (address - state.text_start) : NULL;
     if (text && alias_pages(address, size, shared)) return 1;
     if (!commit_pages(address, size)) return 0;

@@ -1,10 +1,10 @@
 #include <windows.h>
 #include <string.h>
 #include <wchar.h>
+#include "text.h"
 #include "fonts.h"
 #include "session.h"
 
-#define FONTS_FOLDER L"root\\usr\\share\\fonts\\"
 #define FONT_PATTERN L"*.ttf"
 #define LOADED_LIMIT 16
 
@@ -69,7 +69,7 @@ int fonts_resolve(HDC dc, const char *face, WCHAR *family) {
     WCHAR wide[LF_FACESIZE], compact[LF_FACESIZE];
     size_t length = strlen(face);
     if (!length || length >= LF_FACESIZE) return 0;
-    for (size_t index = 0; index <= length; index++) wide[index] = (WCHAR)(unsigned char)face[index];
+    jolt_wide_from_ascii(face, wide, LF_FACESIZE);
     compact_name(wide, compact, LF_FACESIZE);
     load_family_files(compact);
     struct family_search search = { compact, family, 0 };

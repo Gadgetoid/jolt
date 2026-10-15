@@ -2,26 +2,16 @@
 #include <string.h>
 #include <wchar.h>
 
-#define IMAGE_KEY_DIGITS 8
 
 struct jolt_runtime jolt;
 
 void jolt_object_name(WCHAR *name, const WCHAR *prefix, DWORD identifier, int index) {
-    static const WCHAR digits[] = L"0123456789abcdef";
-    wcscpy(name, prefix);
-    size_t length = wcslen(name);
-    for (unsigned int position = 0; position < 8; position++)
-        name[length++] = digits[(identifier >> ((7 - position) * 4)) & 15];
-    if (index >= 0) {
-        name[length++] = L'-';
-        if (index >= 10) name[length++] = (WCHAR)(L'0' + index / 10);
-        name[length++] = (WCHAR)(L'0' + index % 10);
-    }
-    name[length] = 0;
+    if (index >= 0) wsprintfW(name, L"%s%08lx-%d", prefix, identifier, index);
+    else wsprintfW(name, L"%s%08lx", prefix, identifier);
 }
 
 int jolt_kernel_open(DWORD identifier, int create, DWORD image_size) {
-    WCHAR name[64];
+    WCHAR name[JOLT_OBJECT_NAME];
     jolt.identifier = identifier;
     jolt_object_name(name, L"Jolt-kernel-", identifier, -1);
     jolt.mapping = CreateFileMappingW(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(struct jolt_kernel), name);
@@ -242,18 +232,12 @@ void jolt_process_exit(int slot, DWORD status) {
     int parent = process->ppid ? jolt_find_pid(process->ppid) : -1;
     if (parent >= 0 && kernel->processes[parent].state == PROCESS_RUNNING) jolt_notify_parent(slot);
     else process->ppid = 0;
-    if (kernel->window && !InterlockedExchange(&kernel->ttys[JOLT_CONSOLE].output_notified, 1))
-        PostMessageW((HWND)kernel->window, JOLT_TTY_MESSAGE, 0, 0);
+    jolt_tty_notify_console();
 }
 
 
 void jolt_image_name(WCHAR *name, DWORD key) {
-    static const WCHAR digits[] = L"0123456789abcdef";
-    jolt_object_name(name, L"Jolt-app-", jolt.identifier, -1);
-    size_t length = wcslen(name);
-    name[length++] = L'-';
-    for (int position = IMAGE_KEY_DIGITS - 1; position >= 0; position--) name[length++] = digits[(key >> (position * 4)) & 15];
-    name[length] = 0;
+    wsprintfW(name, L"Jolt-app-%08lx-%08lx", jolt.identifier, key);
 }
 
 void jolt_image_touch(DWORD key, DWORD size) {
@@ -275,7 +259,10 @@ void jolt_image_touch(DWORD key, DWORD size) {
 }
 
 LONG jolt_image_used(DWORD key) {
+    LONG used = 0;
+    jolt_lock();
     for (int index = 0; index < JOLT_WARM_IMAGES; index++)
-        if (jolt.kernel->warm[index].key == key) return jolt.kernel->warm[index].used;
-    return 0;
+        if (jolt.kernel->warm[index].key == key) used = jolt.kernel->warm[index].used;
+    jolt_unlock();
+    return used;
 }

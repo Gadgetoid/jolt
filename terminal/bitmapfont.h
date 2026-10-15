@@ -2,11 +2,12 @@
 #include <windows.h>
 
 #define BITMAP_FONT_HEIGHTS 8
+#define BITMAP_FONT_STYLES 2
 
 struct bitmap_font {
     int width, height, count;
     DWORD *codepoints;
-    WORD *rows[2];
+    WORD *rows[BITMAP_FONT_STYLES];
 };
 
 int bitmap_font_heights(const char *face, int *heights);

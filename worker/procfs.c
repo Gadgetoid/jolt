@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "worker.h"
 #include "optional.h"
 #include "procfs.h"
 #include "kernel.h"
@@ -17,7 +18,6 @@
 #define CLOCK_TICKS_PER_SECOND 100
 #define MILLISECONDS_PER_TICK (1000 / CLOCK_TICKS_PER_SECOND)
 #define PAGE_KILOBYTES 4
-#define PAGE_BYTES 4096
 #define NAME_CAPACITY 16
 #define TASK_DIRECTORY "task"
 #define FD_DIRECTORY "fd"
@@ -68,10 +68,6 @@ struct proc_path {
     int fd_listing;
     LONG fd;
 };
-
-static struct jolt_kernel *kernel(void) {
-    return jolt.kernel;
-}
 
 static LONG current_pid(void) {
     DWORD host = GetCurrentProcessId();
@@ -270,7 +266,7 @@ static char process_state(const struct jolt_process *process) {
 static DWORD terminal_device(LONG ctty) {
     if (ctty == JOLT_NO_TTY) return 0;
     if (ctty == JOLT_CONSOLE) return CONSOLE_DEVICE;
-    return (PTS_DEVICE_MAJOR << 8) | (DWORD)(ctty - 1);
+    return (PTS_DEVICE_MAJOR << 8) | (DWORD)JOLT_PTY_NUMBER(ctty);
 }
 
 static LONG render_process_stat(const struct jolt_process *process, char *buffer, DWORD capacity) {
@@ -279,7 +275,7 @@ static LONG render_process_stat(const struct jolt_process *process, char *buffer
         "%ld (%s) %c %ld %ld %ld %lu %ld 0 0 0 0 0 0 0 0 0 20 0 1 0 %lu %lu %lu 4294967295 0 0 0 0 0 0 0 0 0 0 0 0 17 0 0 0 0 0 0\n",
         process->pid, process->name, process_state(process), process->ppid, process->pgid, process->sid,
         terminal_device(process->ctty), foreground, process->start_tick / MILLISECONDS_PER_TICK,
-        process->pages * PAGE_BYTES, process->pages);
+        process->pages * PAGE_SIZE, process->pages);
 }
 
 static const char *state_label(char state) {
@@ -411,7 +407,7 @@ static LONG render_jolt(char *buffer, DWORD capacity) {
     version.dwOSVersionInfoSize = sizeof version;
     GetVersionExW(&version);
     memset(&store, 0, sizeof store);
-    store_function read_store = (store_function)jolt_optional(L"GetStoreInformation");
+    store_function read_store = (store_function)jolt_optional(&jolt_store_information);
     if (read_store) read_store(&store);
     system_parameter_text(SPI_GETOEMINFO, oem);
     system_parameter_text(SPI_GETPLATFORMTYPE, platform);

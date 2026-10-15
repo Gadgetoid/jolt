@@ -65,6 +65,11 @@ WORD canvas_colour(COLORREF colour) {
     return (WORD)(((GetRValue(colour) >> 3) << 11) | ((GetGValue(colour) >> 2) << 5) | (GetBValue(colour) >> 3));
 }
 
+COLORREF canvas_rgb(WORD colour) {
+    BYTE red = (BYTE)((colour >> 11) << 3), green = (BYTE)(((colour >> 5) & 63) << 2), blue = (BYTE)((colour & 31) << 3);
+    return RGB(red | red >> 5, green | green >> 6, blue | blue >> 5);
+}
+
 void canvas_fill(struct canvas *canvas, COLORREF colour) {
     WORD value = canvas_colour(colour);
     for (int y = 0; y < canvas->height; y++) {

@@ -26,13 +26,9 @@
 #define TIMER_MILLISECONDS 100
 #define SCRIPT_LIMIT_MILLISECONDS 180000
 #define KERNEL_OPEN_ATTEMPTS 8
-#define IDENTIFIER_MIXER 2654435761UL
 #define VTERM_ABORT_CODE 125
 #define ICON_RESOURCE 1
 #define COMMAND_FLAG L"-e "
-#define EXIT_STATUS_SHIFT 8
-#define EXIT_STATUS_MASK 0xff
-#define SIGNAL_MASK 0x7f
 #define SMALL_ICON_SIZE 16
 
 void jolt_vterm_exit(int code) {
@@ -44,7 +40,7 @@ void jolt_vterm_abort(void) {
 }
 
 static void write_failure(const char *text) {
-    session_write_file(L"Jolt.log", text, (DWORD)strlen(text), NULL, 0);
+    session_write_file(SESSION_LOG, text, (DWORD)strlen(text), NULL, 0);
 }
 
 static int command_failed(void) {
@@ -54,20 +50,20 @@ static int command_failed(void) {
 static void report_command_failure(void) {
     char text[MESSAGE_CAPACITY];
     DWORD status = session.init_status;
-    if (status & SIGNAL_MASK) snprintf(text, sizeof text, "\r\n[killed by signal %lu] Press Escape to close.", status & SIGNAL_MASK);
-    else snprintf(text, sizeof text, "\r\n[exited with status %lu] Press Escape to close.", (status >> EXIT_STATUS_SHIFT) & EXIT_STATUS_MASK);
+    if (status & WAIT_SIGNAL_MASK) snprintf(text, sizeof text, "\r\n[killed by signal %lu] Press Escape to close.", status & WAIT_SIGNAL_MASK);
+    else snprintf(text, sizeof text, "\r\n[exited with status %lu] Press Escape to close.", (status >> WAIT_CODE_SHIFT) & WAIT_CODE_MASK);
     display_output(text, (DWORD)strlen(text));
 }
 
 static void report_start_failure(void) {
     DWORD status = session.init_status;
-    int crashed = (status & SIGNAL_MASK) != 0;
-    int not_started = ((status >> EXIT_STATUS_SHIFT) & EXIT_STATUS_MASK) == NOT_STARTED_STATUS;
+    int crashed = (status & WAIT_SIGNAL_MASK) != 0;
+    int not_started = ((status >> WAIT_CODE_SHIFT) & WAIT_CODE_MASK) == NOT_STARTED_STATUS;
     const char *detail = jolt.kernel->diagnostic;
     if (session.refused || session.first_output_time || (!crashed && !not_started && !detail[0])) return;
     char problem[MESSAGE_CAPACITY];
     if (detail[0]) snprintf(problem, sizeof problem, "%s", detail);
-    else if (crashed) snprintf(problem, sizeof problem, "the first shell crashed (signal %lu) before printing anything", status & SIGNAL_MASK);
+    else if (crashed) snprintf(problem, sizeof problem, "the first shell crashed (signal %lu) before printing anything", status & WAIT_SIGNAL_MASK);
     else snprintf(problem, sizeof problem, "the first shell could not start");
     diagnostic_report(problem);
 }
@@ -86,8 +82,7 @@ static void end_session(void) {
 typedef void (WINAPI *idle_reset_function)(void);
 
 static void keep_awake(void) {
-    static idle_reset_function reset;
-    if (!reset) reset = (idle_reset_function)jolt_optional(L"SystemIdleTimerReset");
+    idle_reset_function reset = (idle_reset_function)jolt_optional(&jolt_idle_reset);
     if (reset) reset();
 }
 
@@ -191,7 +186,7 @@ static int open_kernel(void) {
     for (int attempt = 0; attempt < KERNEL_OPEN_ATTEMPTS; attempt++) {
         if (jolt_kernel_open(identifier, 1, JOLT_GUEST_SIZE)) return 1;
         jolt_kernel_close();
-        identifier = identifier * IDENTIFIER_MIXER + GetTickCount() + (DWORD)attempt;
+        identifier = identifier * JOLT_HASH_MIXER + GetTickCount() + (DWORD)attempt;
     }
     return 0;
 }

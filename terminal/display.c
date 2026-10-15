@@ -3,6 +3,7 @@
 #include <string.h>
 #include <wchar.h>
 #include <vterm.h>
+#include "text.h"
 #include "display.h"
 #include "scrollback.h"
 #include "session.h"
@@ -34,6 +35,7 @@
 #define LATENCY_SAMPLES 32
 #define DEFAULT_CELL_WIDTH 8
 #define DEFAULT_CELL_HEIGHT 16
+#define NARROWEST_CELL_WIDTH 5
 #define TASKBAR_CLASS L"HHTaskBar"
 #define WINDOWED_STYLE (WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_VSCROLL)
 #define FULLSCREEN_STYLE (WS_VISIBLE | WS_POPUP)
@@ -72,7 +74,7 @@ struct display_state {
 static struct display_state view;
 
 static struct jolt_tty *console(void) {
-    return &jolt.kernel->ttys[JOLT_CONSOLE];
+    return jolt_tty(JOLT_CONSOLE);
 }
 
 static RECT cell_bounds(int start_row, int end_row, int start_column, int end_column) {
@@ -500,14 +502,9 @@ void display_notice(const char *text) {
 }
 
 static int drain_once(void) {
-    struct jolt_tty *tty = console();
     char buffer[JOLT_TTY_SIZE];
-    DWORD consumed = (DWORD)tty->output_read;
-    DWORD count = (DWORD)tty->output_written - consumed;
+    DWORD count = jolt_tty_take_output(JOLT_CONSOLE, buffer, sizeof buffer);
     if (!count) return 0;
-    if (count > sizeof buffer) count = sizeof buffer;
-    for (DWORD index = 0; index < count; index++) buffer[index] = tty->output[(consumed + index) % JOLT_TTY_SIZE];
-    InterlockedExchange(&tty->output_read, (LONG)(consumed + count));
     display_output(buffer, count);
     return 1;
 }
@@ -576,9 +573,7 @@ static int load_bitmap_font(void) {
     view.bitmap = font;
     view.cell_width = font.width;
     view.cell_height = font.height;
-    size_t index = 0;
-    for (; view.settings.face[index] && index + 1 < LF_FACESIZE; index++) view.family[index] = (WCHAR)(unsigned char)view.settings.face[index];
-    view.family[index] = 0;
+    jolt_wide_from_ascii(view.settings.face, view.family, LF_FACESIZE);
     return 1;
 }
 
@@ -701,7 +696,7 @@ int display_create(HWND window, const struct display_settings *settings, display
     view.shown_count = view.shown_rows = view.shown_scroll = -1;
     view.cell_width = DEFAULT_CELL_WIDTH;
     view.cell_height = DEFAULT_CELL_HEIGHT;
-    if (!scrollback_init()) return 0;
+    if (!scrollback_init(GetSystemMetrics(SM_CXSCREEN) / NARROWEST_CELL_WIDTH)) return 0;
     load_fonts();
     int rows, columns;
     grid_size(&rows, &columns);
@@ -742,7 +737,7 @@ void display_destroy(void) {
 typedef HBITMAP (WINAPI *load_bitmap_function)(LPCWSTR);
 
 void display_show_splash(const WCHAR *path) {
-    load_bitmap_function load = (load_bitmap_function)jolt_optional(L"SHLoadDIBitmap");
+    load_bitmap_function load = (load_bitmap_function)jolt_optional(&jolt_load_bitmap);
     view.splash = load ? load(path) : NULL;
     view.splash_loaded = view.splash != NULL;
     if (!view.splash) return;
@@ -780,9 +775,7 @@ DWORD display_screen_text(char *buffer, DWORD capacity) {
 
 DWORD display_describe(char *buffer, DWORD capacity) {
     char family[LF_FACESIZE];
-    size_t index = 0;
-    for (; view.family[index] && index + 1 < sizeof family; index++) family[index] = (char)view.family[index];
-    family[index] = 0;
+    jolt_ascii_from_wide(view.family, family, sizeof family);
     int length = snprintf(buffer, capacity,
         "theme=%s dark=%d fullscreen=%d font=%d face=%s foreground=%06lx background=%06lx\r\n",
         view.settings.theme, view.settings.dark, view.settings.fullscreen, view.settings.font_height, family,

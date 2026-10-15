@@ -17,6 +17,8 @@
 #define JOLT_CONSOLE 0
 #define JOLT_NO_TTY (-1)
 #define JOLT_TTY_LINE 256
+#define JOLT_PTS_PREFIX "/dev/pts/"
+#define JOLT_PTY_NUMBER(tty) ((tty) - 1)
 #define JOLT_GUEST_PATH 256
 #define JOLT_ARGUMENTS 1024
 #define JOLT_COMMAND_LINE 128
@@ -28,6 +30,8 @@
 #define JOLT_WARM_MESSAGE (WM_USER + 4)
 #define JOLT_WARM_IMAGES 8
 #define JOLT_DIAGNOSTIC 192
+#define JOLT_OBJECT_NAME 48
+#define JOLT_HASH_MIXER 2654435761UL
 #define JOLT_WAIT_ANY 0
 #define JOLT_WAIT_TTY_INPUT(tty) (0x100 | (tty))
 #define JOLT_WAIT_TTY_OUTPUT(tty) (0x200 | (tty))
@@ -224,12 +228,14 @@ void jolt_process_exit(int slot, DWORD status);
 void jolt_image_name(WCHAR *name, DWORD key);
 void jolt_image_touch(DWORD key, DWORD size);
 LONG jolt_image_used(DWORD key);
+struct jolt_tty *jolt_tty(int index);
+void jolt_tty_notify_console(void);
+DWORD jolt_tty_take_output(int index, char *buffer, DWORD capacity);
 void jolt_tty_default_settings(struct linux_termios *settings);
 int jolt_tty_open(void);
 DWORD jolt_tty_write(int tty, const char *bytes, DWORD length, int block);
 DWORD jolt_tty_master_write(int tty, const char *bytes, DWORD length);
 void jolt_tty_input(int tty, char character);
 void jolt_tty_discard_input(int tty);
-void jolt_tty_hang_up(int tty);
 void jolt_tty_resize(int tty, WORD rows, WORD columns, WORD width, WORD height);
 void jolt_tty_release_end(int tty, int master);

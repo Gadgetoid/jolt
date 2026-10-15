@@ -1,5 +1,6 @@
 #include <string.h>
 #include <wchar.h>
+#include "worker.h"
 #include "files.h"
 #include "linux.h"
 #include "guest-manifest.h"
@@ -26,14 +27,11 @@
 #define SERIAL_DEVICE_MAJOR 4
 #define SERIAL_DEVICE_MINOR_BASE 64
 #define PIPE_INODE_BASE 0x70000000UL
-#define FNV_OFFSET 2166136261UL
-#define FNV_PRIME 16777619UL
 #define BLOCK_SIZE 4096
 #define SECTOR_SIZE 512
 #define BACKUP_SUFFIX L".jolt-old"
 #define FIRST_HOST_ENTRY 2
 #define LISTING_ENDED 0xffffffffUL
-#define INVALID_ATTRIBUTES 0xffffffffUL
 #define ACCESS_EXECUTE 1
 #define ACCESS_WRITE 2
 #define ACCESS_MASK 7
@@ -139,8 +137,8 @@ static int virtual_node(const char *absolute, struct jolt_node *node) {
     } else if (has_prefix(absolute, "/bin/")) {
         node->kind = jolt_is_applet(absolute + strlen("/bin/")) ? NODE_APPLET : NODE_MISSING;
         node->size = JOLT_GUEST_SIZE;
-    } else if (has_prefix(absolute, "/dev/pts/")) {
-        node->kind = pty_active(absolute + strlen("/dev/pts/")) ? NODE_PTS : NODE_MISSING;
+    } else if (has_prefix(absolute, JOLT_PTS_PREFIX)) {
+        node->kind = pty_active(absolute + strlen(JOLT_PTS_PREFIX)) ? NODE_PTS : NODE_MISSING;
     } else if (has_prefix(absolute, "/dev/")) {
         node->kind = device_kind(absolute + strlen("/dev/"));
     } else {
@@ -534,7 +532,7 @@ static int description_identity(const struct jolt_description *description, stru
     switch (description->type) {
     case DESCRIPTION_TTY:
         if (description->tty != JOLT_CONSOLE)
-            *identity = (struct file_identity){ LINUX_S_IFCHR | 0620, PTS_DEVICE_MAJOR, (DWORD)(description->tty - 1), 0 };
+            *identity = (struct file_identity){ LINUX_S_IFCHR | 0620, PTS_DEVICE_MAJOR, (DWORD)JOLT_PTY_NUMBER(description->tty), 0 };
         else *identity = (struct file_identity){ LINUX_S_IFCHR | 0620, TTY_DEVICE_MAJOR, 0, 0 };
         return 1;
     case DESCRIPTION_PTY_MASTER:
@@ -604,7 +602,7 @@ static void node_identity(const struct jolt_node *node, const char *absolute, st
         break;
     case NODE_PTS:
         *identity = (struct file_identity){ LINUX_S_IFCHR | 0620, PTS_DEVICE_MAJOR,
-            (DWORD)(absolute[strlen("/dev/pts/")] - '0'), 0 };
+            (DWORD)(absolute[strlen(JOLT_PTS_PREFIX)] - '0'), 0 };
         break;
     default:
         *identity = (struct file_identity){ LINUX_S_IFCHR | 0620, TTY_DEVICE_MAJOR, 0, 0 };

@@ -7,12 +7,12 @@
 #include "linux.h"
 
 #define SCREEN_TEXT_CAPACITY 8192
-#define WAIT_SIGNAL_MASK 0x7f
-#define WAIT_CODE_SHIFT 8
 
 struct session session;
 
 void session_path(WCHAR *path, const WCHAR *name) {
+    path[0] = 0;
+    if (wcslen(session.folder) + wcslen(name) >= MAX_PATH) return;
     wcscpy(path, session.folder);
     wcscat(path, name);
 }
@@ -59,7 +59,7 @@ DWORD session_available_memory(void) {
 }
 
 void session_save_result(void) {
-    DWORD code = (session.init_status >> WAIT_CODE_SHIFT) & 255, signal = session.init_status & WAIT_SIGNAL_MASK;
+    DWORD code = (session.init_status >> WAIT_CODE_SHIFT) & WAIT_CODE_MASK, signal = session.init_status & WAIT_SIGNAL_MASK;
     int passed = !session.refused && session.finished && !signal;
     DWORD first_output = session.first_output_time ? session.first_output_time - session.start_time : 0;
     DWORD finish = session.finish_time ? session.finish_time : GetTickCount();
@@ -71,7 +71,7 @@ void session_save_result(void) {
         session.message[0] ? " " : "", session.message);
     char *text = LocalAlloc(LMEM_FIXED, SCREEN_TEXT_CAPACITY);
     DWORD text_length = text ? display_screen_text(text, SCREEN_TEXT_CAPACITY) : 0;
-    session_write_file(L"Jolt.log", header, (DWORD)length, text, text_length);
+    session_write_file(SESSION_LOG, header, (DWORD)length, text, text_length);
     if (text) LocalFree(text);
     if (session.transcript) session_write_file(L"JoltTty.log", session.transcript, session.transcript_length, NULL, 0);
 }

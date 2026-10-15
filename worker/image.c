@@ -13,9 +13,6 @@
 #define NOTE_ALIGNMENT 4
 #define REFUSAL_CAPACITY 384
 #define CACHE_MAGIC 0x4a6f4c54UL
-#define CACHE_NAME_CAPACITY 48
-#define FNV_OFFSET 2166136261UL
-#define FNV_PRIME 16777619UL
 
 struct cache_header {
     DWORD magic;
@@ -109,8 +106,12 @@ static struct cache_header *cache_header(BYTE *view, DWORD size) {
     return (struct cache_header *)(view + header_offset(size));
 }
 
+static struct cache_header *header_at_end(BYTE *view, DWORD mapping_size) {
+    return (struct cache_header *)(view + mapping_size - sizeof(struct cache_header));
+}
+
 static int open_mapping(DWORD key, DWORD mapping_size, struct cached_image *cached, int *existed) {
-    WCHAR name[CACHE_NAME_CAPACITY];
+    WCHAR name[JOLT_OBJECT_NAME];
     jolt_image_name(name, key);
     cached->mapping = CreateFileMappingW(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, mapping_size, name);
     if (!cached->mapping) return 0;
@@ -216,7 +217,7 @@ int image_attach(void) {
     int existed = 0;
     if (!state.image_key) return 1;
     if (open_mapping(state.image_key, state.image_mapping_size, &current, &existed)) {
-        const struct cache_header *header = (const struct cache_header *)(current.view + state.image_mapping_size - sizeof(struct cache_header));
+        const struct cache_header *header = header_at_end(current.view, state.image_mapping_size);
         if (existed && header->magic == CACHE_MAGIC) return 1;
         close_mapping(&current);
     }

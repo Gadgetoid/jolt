@@ -6,8 +6,24 @@
 #define ASCII_DELETE 0x7f
 #define OUTPUT_RETRY_MILLISECONDS 5
 
-static struct jolt_tty *tty_at(int index) {
+struct jolt_tty *jolt_tty(int index) {
     return &jolt.kernel->ttys[index];
+}
+
+void jolt_tty_notify_console(void) {
+    struct jolt_kernel *kernel = jolt.kernel;
+    if (kernel->window && !InterlockedExchange(&kernel->ttys[JOLT_CONSOLE].output_notified, 1))
+        PostMessageW((HWND)kernel->window, JOLT_TTY_MESSAGE, 0, 0);
+}
+
+DWORD jolt_tty_take_output(int index, char *buffer, DWORD capacity) {
+    struct jolt_tty *tty = jolt_tty(index);
+    DWORD consumed = (DWORD)tty->output_read;
+    DWORD count = (DWORD)tty->output_written - consumed;
+    if (count > capacity) count = capacity;
+    for (DWORD position = 0; position < count; position++) buffer[position] = tty->output[(consumed + position) % JOLT_TTY_SIZE];
+    InterlockedExchange(&tty->output_read, (LONG)(consumed + count));
+    return count;
 }
 
 void jolt_tty_default_settings(struct linux_termios *settings) {
@@ -33,9 +49,9 @@ void jolt_tty_default_settings(struct linux_termios *settings) {
 }
 
 int jolt_tty_open(void) {
-    const struct jolt_tty *console = tty_at(JOLT_CONSOLE);
+    const struct jolt_tty *console = jolt_tty(JOLT_CONSOLE);
     for (int index = JOLT_CONSOLE + 1; index < JOLT_TTYS; index++) {
-        struct jolt_tty *tty = tty_at(index);
+        struct jolt_tty *tty = jolt_tty(index);
         if (tty->state != TTY_FREE) continue;
         memset(tty, 0, sizeof *tty);
         tty->state = TTY_PTY;
@@ -52,17 +68,12 @@ int jolt_tty_open(void) {
 }
 
 static void notify_output(int index) {
-    struct jolt_kernel *kernel = jolt.kernel;
-    if (index != JOLT_CONSOLE) {
-        jolt_wake_object(JOLT_WAIT_TTY_OUTPUT(index));
-        return;
-    }
-    if (kernel->window && !InterlockedExchange(&tty_at(index)->output_notified, 1))
-        PostMessageW((HWND)kernel->window, JOLT_TTY_MESSAGE, 0, 0);
+    if (index == JOLT_CONSOLE) jolt_tty_notify_console();
+    else jolt_wake_object(JOLT_WAIT_TTY_OUTPUT(index));
 }
 
 DWORD jolt_tty_write(int index, const char *bytes, DWORD length, int block) {
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     DWORD done = 0;
     while (done < length) {
         jolt_lock();
@@ -103,7 +114,7 @@ static void echo(int index, const char *bytes, DWORD length) {
 }
 
 static void echo_character(int index, char character) {
-    DWORD local = tty_at(index)->termios.local_flags;
+    DWORD local = jolt_tty(index)->termios.local_flags;
     if (!(local & LINUX_ECHO)) return;
     BYTE value = (BYTE)character;
     if ((local & LINUX_ECHOCTL) && is_control(value) && character != '\n' && character != '\t') {
@@ -115,7 +126,7 @@ static void echo_character(int index, char character) {
 }
 
 static void push_input(int index, const char *bytes, DWORD length) {
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     DWORD written = (DWORD)tty->input_written;
     for (DWORD position = 0; position < length; position++) {
         if (written - (DWORD)tty->input_read >= JOLT_INPUT_SIZE) break;
@@ -127,14 +138,14 @@ static void push_input(int index, const char *bytes, DWORD length) {
 
 void jolt_tty_discard_input(int index) {
     jolt_lock();
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     tty->input_read = tty->input_written;
     tty->input_eof = 0;
     jolt_unlock();
 }
 
 static void erase_characters(int index, DWORD count) {
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     DWORD local = tty->termios.local_flags;
     int visible = (local & LINUX_ECHO) && (local & LINUX_ECHOE);
     while (count-- && tty->line_length) {
@@ -146,7 +157,7 @@ static void erase_characters(int index, DWORD count) {
 }
 
 static void erase_word(int index) {
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     while (tty->line_length && tty->line[tty->line_length - 1] == ' ') erase_characters(index, 1);
     while (tty->line_length && tty->line[tty->line_length - 1] != ' ') erase_characters(index, 1);
 }
@@ -169,7 +180,7 @@ static int signal_for(const struct linux_termios *settings, BYTE value) {
 }
 
 static void raise_signal(int index, char character, int signal) {
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     tty->line_length = 0;
     if (signal != LINUX_SIGTSTP) {
         tty->input_read = tty->input_written;
@@ -180,7 +191,7 @@ static void raise_signal(int index, char character, int signal) {
 }
 
 static void canonical_input(int index, char character) {
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     const BYTE *control = tty->termios.control;
     BYTE value = (BYTE)character;
     if (value == control[LINUX_VERASE] || value == '\b') {
@@ -215,7 +226,7 @@ static void canonical_input(int index, char character) {
 }
 
 static void process_input(int index, char character) {
-    const struct linux_termios *settings = &tty_at(index)->termios;
+    const struct linux_termios *settings = &jolt_tty(index)->termios;
     if (character == '\r' && (settings->input_flags & LINUX_IGNCR)) return;
     character = translate_input(settings, character);
     if (settings->local_flags & LINUX_ISIG) {
@@ -250,7 +261,7 @@ DWORD jolt_tty_master_write(int index, const char *bytes, DWORD length) {
 
 void jolt_tty_resize(int index, WORD rows, WORD columns, WORD width, WORD height) {
     jolt_lock();
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     int changed = tty->rows != rows || tty->columns != columns;
     tty->rows = rows;
     tty->columns = columns;
@@ -261,15 +272,15 @@ void jolt_tty_resize(int index, WORD rows, WORD columns, WORD width, WORD height
 }
 
 static void release_tty(int index) {
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     if (index == JOLT_CONSOLE || tty->masters > 0 || tty->slaves > 0) return;
     for (int slot = 0; slot < JOLT_PROCESSES; slot++)
         if (jolt.kernel->processes[slot].ctty == index) jolt.kernel->processes[slot].ctty = JOLT_NO_TTY;
     tty->state = TTY_FREE;
 }
 
-void jolt_tty_hang_up(int index) {
-    struct jolt_tty *tty = tty_at(index);
+static void hang_up(int index) {
+    struct jolt_tty *tty = jolt_tty(index);
     tty->hung_up = 1;
     if (tty->foreground) {
         jolt_signal_group(tty->foreground, LINUX_SIGHUP);
@@ -280,10 +291,10 @@ void jolt_tty_hang_up(int index) {
 }
 
 void jolt_tty_release_end(int index, int master) {
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     if (index == JOLT_CONSOLE) return;
     if (master) {
-        if (--tty->masters <= 0) jolt_tty_hang_up(index);
+        if (--tty->masters <= 0) hang_up(index);
         return;
     }
     if (--tty->slaves <= 0) {

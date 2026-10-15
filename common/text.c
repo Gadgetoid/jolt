@@ -95,3 +95,19 @@ DWORD jolt_wide_from_utf8(const char *text, DWORD length, WCHAR *wide, DWORD cap
     wide[used] = 0;
     return used;
 }
+
+DWORD jolt_wide_from_ascii(const char *text, WCHAR *wide, DWORD capacity) {
+    DWORD length = 0;
+    if (!capacity) return 0;
+    for (; text[length] && length + 1 < capacity; length++) wide[length] = (WCHAR)(unsigned char)text[length];
+    wide[length] = 0;
+    return length;
+}
+
+DWORD jolt_ascii_from_wide(const WCHAR *wide, char *text, DWORD capacity) {
+    DWORD length = 0;
+    if (!capacity) return 0;
+    for (; wide[length] && length + 1 < capacity; length++) text[length] = wide[length] < 0x80 ? (char)wide[length] : '?';
+    text[length] = 0;
+    return length;
+}

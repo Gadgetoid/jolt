@@ -25,3 +25,4 @@ void canvas_move(struct canvas *canvas, int origin_x, int origin_y, int cell_wid
     int left, int right, int downward, int rightward);
 WORD *canvas_pixel(struct canvas *canvas, int x, int y);
 WORD canvas_colour(COLORREF colour);
+COLORREF canvas_rgb(WORD colour);

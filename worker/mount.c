@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <string.h>
+#include "text.h"
 #include "worker.h"
 #include "memory.h"
 #include "syscalls.h"
@@ -31,11 +32,10 @@ static LONG normalise_source(const char *raw, char *source) {
 
 static LONG check_source(const char *source) {
     WCHAR path[MAX_PATH];
-    size_t length = strlen(source);
-    if (!length) return 0;
-    for (size_t index = 0; index <= length; index++) path[index] = (unsigned char)source[index];
+    if (!source[0]) return 0;
+    jolt_wide_from_ascii(source, path, MAX_PATH);
     DWORD attributes = GetFileAttributesW(path);
-    if (attributes == 0xffffffffUL) return error(LINUX_ENOENT);
+    if (attributes == INVALID_ATTRIBUTES) return error(LINUX_ENOENT);
     return attributes & FILE_ATTRIBUTE_DIRECTORY ? 0 : error(LINUX_ENOTDIR);
 }
 

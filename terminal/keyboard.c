@@ -169,8 +169,7 @@ static int window_active = 1;
 static int hotkeys_wanted;
 
 static void apply_capture(void) {
-    static all_keys_function all_keys;
-    if (!all_keys) all_keys = (all_keys_function)jolt_optional(L"AllKeys");
+    all_keys_function all_keys = (all_keys_function)jolt_optional(&jolt_all_keys);
     if (all_keys) all_keys(window_active && (key_log_remaining || hotkeys_wanted));
 }
 

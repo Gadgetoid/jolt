@@ -106,7 +106,13 @@ static int step_font(int step) {
     return 1;
 }
 
+static const char *argument(const char *command, const char *prefix) {
+    size_t length = strlen(prefix);
+    return strncmp(command, prefix, length) ? NULL : command + length;
+}
+
 static int apply_command(const char *command) {
+    const char *value;
     if (!strcmp(command, "fullscreen")) current.fullscreen = 1;
     else if (!strcmp(command, "window")) current.fullscreen = 0;
     else if (!strcmp(command, "toggle")) current.fullscreen = !current.fullscreen;
@@ -114,10 +120,10 @@ static int apply_command(const char *command) {
     else if (!strcmp(command, "light")) current.dark = 0;
     else if (!strcmp(command, "font+")) return step_font(FONT_STEP);
     else if (!strcmp(command, "font-")) return step_font(-FONT_STEP);
-    else if (!strncmp(command, "font=", 5) && valid_font(atoi(command + 5))) current.font_height = atoi(command + 5);
-    else if (!strncmp(command, "theme=", 6)) return set_theme(command + 6);
-    else if (!strncmp(command, "face=", 5)) return set_face(command + 5);
-    else if (!strncmp(command, "hotkeys=", 8)) return parse_hotkey_mode(command + 8, &current.hotkeys);
+    else if ((value = argument(command, "font=")) && valid_font(atoi(value))) current.font_height = atoi(value);
+    else if ((value = argument(command, "theme="))) return set_theme(value);
+    else if ((value = argument(command, "face="))) return set_face(value);
+    else if ((value = argument(command, "hotkeys="))) return parse_hotkey_mode(value, &current.hotkeys);
     else return 0;
     return 1;
 }

@@ -105,23 +105,13 @@ int commit_pages(DWORD start, DWORD length) {
 
 typedef BOOL (WINAPI *virtual_copy_function)(LPVOID, LPVOID, DWORD, DWORD);
 
-static virtual_copy_function virtual_copy(void) {
-    static int looked;
-    static virtual_copy_function function;
-    if (!looked) {
-        function = (virtual_copy_function)jolt_optional(L"VirtualCopy");
-        looked = 1;
-    }
-    return function;
-}
-
 int alias_pages(DWORD start, DWORD length, const void *source) {
     DWORD first = page_round_down(start), end = page_round_up(start + length), count = (end - first) / PAGE_SIZE;
     if (first != start || first < GUEST_START || end > GUEST_LIMIT || end <= first) return 0;
     if (((DWORD)source & (PAGE_SIZE - 1)) || state.page_count + count > MAX_PAGES) return 0;
     for (DWORD address = first; address < end; address += PAGE_SIZE)
         if (page_committed(address)) return 0;
-    virtual_copy_function copy = virtual_copy();
+    virtual_copy_function copy = (virtual_copy_function)jolt_optional(&jolt_virtual_copy);
     if (!copy || !copy((void *)first, (void *)source, end - first, PAGE_EXECUTE_READ)) return 0;
     for (DWORD address = first; address < end; address += PAGE_SIZE) mark_page(address, 1);
     count_pages((LONG)count);

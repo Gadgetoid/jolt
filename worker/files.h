@@ -1,9 +1,10 @@
-#ifndef JOLT_FILES_H
-#define JOLT_FILES_H
+#pragma once
 
 #include <windows.h>
 #include "kernel.h"
 #include "linux.h"
+
+#define INVALID_ATTRIBUTES 0xffffffffUL
 
 enum {
     NODE_MISSING, NODE_FILE, NODE_DIRECTORY, NODE_APPLET, NODE_VIRTUAL_DIRECTORY,
@@ -40,5 +41,3 @@ LONG jolt_file_statfs(struct linux_statfs64 *record);
 LONG jolt_file_create(const char *absolute, const void *data, DWORD size);
 LONG jolt_file_open_host(const char *absolute, HANDLE *file, WCHAR *path);
 LONG jolt_file_load(const char *absolute, BYTE **data, DWORD *size, DWORD limit);
-
-#endif

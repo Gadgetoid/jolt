@@ -187,9 +187,7 @@ LONG icmp_send(int index, const BYTE *packet, DWORD length, const struct sockadd
     memcpy(request_buffer + sizeof *request, packet + ICMP_HEADER_SIZE, payload_size);
     DWORD request_length = sizeof *request + payload_size, reply_length = sizeof reply_buffer;
     memset(reply_buffer, 0, sizeof reply_buffer);
-    static ws_control_function ws_control;
-    if (!ws_control) ws_control = (ws_control_function)jolt_optional_in(L"winsock.dll", L"WsControl");
-    if (!ws_control) ws_control = (ws_control_function)jolt_optional(L"WsControl");
+    ws_control_function ws_control = (ws_control_function)jolt_optional(&jolt_ws_control);
     if (!ws_control) return error(LINUX_ENETUNREACH);
     DWORD failure = ws_control(WSCONTROL_TCP, WSCONTROL_ICMP_ECHO, request_buffer, &request_length, reply_buffer,
         &reply_length);

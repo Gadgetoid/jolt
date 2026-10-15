@@ -106,15 +106,13 @@ static void write_init_arguments(char *arguments) {
 static void seed_entropy(BYTE *entropy) {
     if (jolt_crypt_random(entropy, JOLT_ENTROPY_SIZE)) return;
     DWORD mix[JOLT_ENTROPY_SIZE / sizeof(DWORD)];
-    MEMORYSTATUS memory;
-    memory.dwLength = sizeof memory;
-    GlobalMemoryStatus(&memory);
+    DWORD available = session_available_memory();
     for (DWORD index = 0; index < JOLT_ENTROPY_SIZE / sizeof(DWORD); index++)
-        mix[index] = GetTickCount() ^ GetCurrentProcessId() ^ memory.dwAvailPhys ^ (index * 2654435761UL);
+        mix[index] = GetTickCount() ^ GetCurrentProcessId() ^ available ^ (index * JOLT_HASH_MIXER);
     jolt_sha256((const BYTE *)mix, sizeof mix, entropy);
 }
 
-static void prepare_init(void) {
+static int prepare_init(void) {
     struct jolt_kernel *k = kernel();
     seed_entropy(k->entropy);
     write_init_arguments(k->arguments);
@@ -129,8 +127,10 @@ static void prepare_init(void) {
     init->fatal = ~(LINUX_DEFAULT_IGNORED | LINUX_DEFAULT_STOP);
     init->ignored = LINUX_DEFAULT_IGNORED;
     int terminal = jolt_description_alloc(DESCRIPTION_TTY, LINUX_O_RDWR, "/dev/tty");
+    if (terminal < 0) return 0;
     k->descriptions[terminal].references = 3;
     init->fds[0] = init->fds[1] = init->fds[2] = (BYTE)(terminal + 1);
+    return 1;
 }
 
 static DWORD WINAPI keep_spare_ready(LPVOID unused) {
@@ -157,7 +157,7 @@ static DWORD WINAPI keep_spare_ready(LPVOID unused) {
 }
 
 int broker_start(void) {
-    prepare_init();
+    if (!prepare_init()) return fail("FAIL: could not set up the first process");
     PROCESS_INFORMATION information;
     if (!create_worker(L"--slot=0", &information)) return fail("FAIL: JoltWorker.exe could not start");
     hosts[INIT_SLOT].handle = information.hProcess;
@@ -201,6 +201,7 @@ void broker_stop(void) {
     network_stop();
     sound_stop();
     serial_stop();
+    jolt_lock();
     for (int slot = 0; slot < JOLT_PROCESSES; slot++) {
         const struct jolt_process *process = &kernel()->processes[slot];
         struct supervised_host *host = &hosts[slot];
@@ -212,6 +213,7 @@ void broker_stop(void) {
         }
         release_host(host);
     }
+    jolt_unlock();
 }
 
 static void track_host(int slot, const struct jolt_process *process) {
@@ -259,11 +261,11 @@ void broker_monitor(void) {
 int broker_idle(DWORD quiet_interval) {
     struct jolt_kernel *k = kernel();
     const struct jolt_tty *console = &k->ttys[JOLT_CONSOLE];
-    if (console->line_length || (DWORD)console->input_written != (DWORD)console->input_read) return 0;
-    if ((DWORD)console->output_written != (DWORD)console->output_read) return 0;
     if (GetTickCount() - session.last_output_time < quiet_interval) return 0;
     int reading = 0, starting = 0;
     jolt_lock();
+    int pending = console->line_length || (DWORD)console->input_written != (DWORD)console->input_read ||
+        (DWORD)console->output_written != (DWORD)console->output_read;
     for (int slot = 0; slot < JOLT_PROCESSES; slot++) {
         const struct jolt_process *process = &k->processes[slot];
         if (process->state == PROCESS_STARTING) starting = 1;
@@ -272,5 +274,5 @@ int broker_idle(DWORD quiet_interval) {
         if (process->state == PROCESS_RUNNING && foreground && waiting_input) reading = 1;
     }
     jolt_unlock();
-    return reading && !starting;
+    return reading && !starting && !pending;
 }

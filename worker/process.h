@@ -13,7 +13,6 @@ LONG pty_master_read(int index, char *buffer, DWORD length, int nonblocking);
 LONG pty_master_write(int index, const char *buffer, DWORD length);
 int tty_readiness(int index, int master);
 LONG tty_open(const char *absolute, DWORD type, LONG *index);
-int tty_number(int index);
 void update_signal_masks(void);
 void suspend_signals(DWORD mask);
 void resume_signals(void);

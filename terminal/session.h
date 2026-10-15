@@ -3,6 +3,10 @@
 
 #define TRANSCRIPT_SIZE 65536
 #define MESSAGE_CAPACITY 256
+#define SESSION_LOG L"Jolt.log"
+#define WAIT_SIGNAL_MASK 0x7f
+#define WAIT_CODE_SHIFT 8
+#define WAIT_CODE_MASK 0xff
 #define SESSION_COMMAND_CAPACITY 384
 
 struct session {

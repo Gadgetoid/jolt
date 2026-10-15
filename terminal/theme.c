@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdlib.h>
 #include <string.h>
+#include "text.h"
 #include "theme.h"
 #include "session.h"
 
@@ -32,8 +33,7 @@ int theme_valid_name(const char *name) {
 
 static int read_theme_file(const char *name, const WCHAR *suffix, char *text) {
     WCHAR wide[THEME_NAME_CAPACITY], relative[MAX_PATH], path[MAX_PATH];
-    size_t length = strlen(name);
-    for (size_t index = 0; index <= length; index++) wide[index] = (WCHAR)(unsigned char)name[index];
+    jolt_wide_from_ascii(name, wide, THEME_NAME_CAPACITY);
     wsprintfW(relative, L"%s%s%s%s", THEMES_FOLDER, wide, suffix, THEME_EXTENSION);
     session_path(path, relative);
     HANDLE file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);

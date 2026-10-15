@@ -1,11 +1,10 @@
 #include <windows.h>
-#include <stdio.h>
 #include <string.h>
 #include <wchar.h>
+#include "fonts.h"
 #include "bitmapfont.h"
 #include "session.h"
 
-#define FONTS_FOLDER L"root\\usr\\share\\fonts\\"
 #define FONT_EXTENSION L".jbf"
 #define BOLD_SUFFIX L"-bold"
 #define MAGIC "JBF1"
@@ -166,7 +165,7 @@ static int load_atlas(const WCHAR *path, struct bitmap_font *font, int slot) {
 }
 
 void bitmap_font_free(struct bitmap_font *font) {
-    for (int slot = 0; slot < 2; slot++)
+    for (int slot = 0; slot < BITMAP_FONT_STYLES; slot++)
         if (font->rows[slot]) LocalFree(font->rows[slot]);
     if (font->codepoints) LocalFree(font->codepoints);
     memset(font, 0, sizeof *font);

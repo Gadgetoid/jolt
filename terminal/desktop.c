@@ -22,7 +22,7 @@
 typedef BOOL (WINAPI *create_shortcut_function)(LPWSTR, LPWSTR);
 
 static BOOL create_shortcut(WCHAR *shortcut, WCHAR *target) {
-    create_shortcut_function create = (create_shortcut_function)jolt_optional(L"SHCreateShortcut");
+    create_shortcut_function create = (create_shortcut_function)jolt_optional(&jolt_create_shortcut);
     return create && create(shortcut, target);
 }
 

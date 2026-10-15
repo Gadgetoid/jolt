@@ -138,16 +138,8 @@ static int wait_as_spare(DWORD *assigned_slot) {
 
 static void open_trace(const WCHAR *folder) {
     if (!jolt.kernel->trace) return;
-    WCHAR path[MAX_PATH], number[12];
-    LONG pid = self->pid;
-    int length = 0;
-    do number[length++] = (WCHAR)(L'0' + pid % 10); while ((pid /= 10) && length < 11);
-    wcscpy(path, folder);
-    wcscat(path, L"JoltTrace-");
-    size_t position = wcslen(path);
-    while (length) path[position++] = number[--length];
-    path[position] = 0;
-    wcscat(path, L".log");
+    WCHAR path[MAX_PATH];
+    wsprintfW(path, L"%sJoltTrace-%ld.log", folder, self->pid);
     log_file = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 }
 

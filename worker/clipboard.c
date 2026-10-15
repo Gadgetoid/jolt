@@ -17,7 +17,7 @@ typedef HANDLE (WINAPI *clipboard_function)(UINT);
 static char *snapshot(DWORD *size) {
     *size = 0;
     if (!OpenClipboard(NULL)) return NULL;
-    clipboard_function read = (clipboard_function)jolt_optional(L"GetClipboardDataAlloc");
+    clipboard_function read = (clipboard_function)jolt_optional(&jolt_clipboard_read);
     WCHAR *wide = read ? read(CF_UNICODETEXT) : NULL;
     CloseClipboard();
     if (!wide) return NULL;

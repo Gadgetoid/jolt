@@ -14,7 +14,7 @@ struct styled_cell {
     COLORREF background;
 };
 
-int scrollback_init(void);
+int scrollback_init(int columns);
 void scrollback_free(void);
 int scrollback_count(void);
 void scrollback_push(int columns, const struct styled_cell *cells);

@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
+#include "text.h"
 #include "diagnostic.h"
 #include "session.h"
 #include "optional.h"
@@ -11,39 +12,26 @@
 #define MISSING_CAPACITY 192
 #define ISSUES_URL "https://github.com/Gadgetoid/jolt/issues"
 
-static void narrow(const WCHAR *wide, char *text, size_t capacity) {
-    size_t length = 0;
-    for (; wide[length] && length + 1 < capacity; length++)
-        text[length] = wide[length] < 0x80 ? (char)wide[length] : '?';
-    text[length] = 0;
-}
-
 static void system_text(UINT action, char *text) {
     WCHAR wide[DETAIL_CAPACITY];
     wide[0] = 0;
     if (!SystemParametersInfoW(action, sizeof wide, wide, 0)) wide[0] = 0;
     wide[DETAIL_CAPACITY - 1] = 0;
-    narrow(wide, text, DETAIL_CAPACITY);
+    jolt_ascii_from_wide(wide, text, DETAIL_CAPACITY);
 }
-
-static const WCHAR *const optional_functions[] = {
-    L"AllKeys", L"VirtualCopy", L"CryptAcquireContextW", L"CryptGenRandom", L"SHCreateShortcut", L"SHLoadDIBitmap",
-    L"SystemIdleTimerReset", L"GetClipboardDataAlloc", L"GetStoreInformation",
-};
 
 static void missing_functions(char *text, size_t capacity) {
     size_t used = 0;
     text[0] = 0;
-    for (size_t index = 0; index < sizeof optional_functions / sizeof optional_functions[0]; index++) {
-        if (jolt_optional(optional_functions[index])) continue;
+    for (int index = 0; index < jolt_optional_count; index++) {
+        struct optional_function *function = jolt_optional_functions[index];
+        if (jolt_optional(function)) continue;
         char name[DETAIL_CAPACITY];
-        narrow(optional_functions[index], name, sizeof name);
+        jolt_ascii_from_wide(function->name, name, sizeof name);
         int written = snprintf(text + used, capacity - used, "%s%s", used ? ", " : "", name);
         if (written < 0 || used + (size_t)written >= capacity) break;
         used += (size_t)written;
     }
-    if (!jolt_optional_in(L"winsock.dll", L"WsControl") && !jolt_optional(L"WsControl"))
-        snprintf(text + used, capacity - used, "%sWsControl", used ? ", " : "");
     if (!text[0]) snprintf(text, capacity, "none");
 }
 
@@ -92,7 +80,7 @@ static void report(const char *problem, int show) {
     session_write_file(DIAGNOSTIC_FILE, text, (DWORD)length, NULL, 0);
     if (!show) return;
     WCHAR wide[DIAGNOSTIC_CAPACITY];
-    for (int index = 0; index <= length; index++) wide[index] = (WCHAR)(unsigned char)text[index];
+    jolt_wide_from_ascii(text, wide, DIAGNOSTIC_CAPACITY);
     MessageBoxW(session.window, wide, L"JoLT", MB_OK | MB_ICONERROR);
 }
 

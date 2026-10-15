@@ -57,12 +57,7 @@ static void abandon_child(struct jolt_process *process) {
 }
 
 static void slot_command(WCHAR *command, int child) {
-    jolt_object_name(command, L"--ipc=", jolt.identifier, -1);
-    wcscat(command, L" --slot=");
-    size_t length = wcslen(command);
-    if (child >= 10) command[length++] = (WCHAR)(L'0' + child / 10);
-    command[length++] = (WCHAR)(L'0' + child % 10);
-    command[length] = 0;
+    wsprintfW(command, L"--ipc=%08lx --slot=%d", jolt.identifier, child);
 }
 
 static int claim_spare(int child, PROCESS_INFORMATION *information) {

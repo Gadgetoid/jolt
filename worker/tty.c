@@ -9,10 +9,6 @@
 
 #define VTIME_UNIT_MILLISECONDS 100
 
-static struct jolt_tty *tty_at(int index) {
-    return &kernel()->ttys[index];
-}
-
 static DWORD take_input(struct jolt_tty *tty, char *buffer, DWORD length, int canonical) {
     DWORD consumed = (DWORD)tty->input_read;
     DWORD available = (DWORD)tty->input_written - consumed;
@@ -34,7 +30,7 @@ static LONG background_read(void) {
 }
 
 LONG tty_read(int index, char *buffer, DWORD length, int nonblocking) {
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     DWORD began = GetTickCount();
     for (;;) {
         jolt_lock();
@@ -76,7 +72,7 @@ LONG tty_read(int index, char *buffer, DWORD length, int nonblocking) {
 }
 
 LONG tty_write(int index, const char *buffer, DWORD length) {
-    if (tty_at(index)->hung_up) return error(LINUX_EIO);
+    if (jolt_tty(index)->hung_up) return error(LINUX_EIO);
     DWORD written = jolt_tty_write(index, buffer, length, 1);
     return written || !length ? (LONG)written : error(LINUX_EIO);
 }
@@ -86,16 +82,11 @@ static int slave_gone(const struct jolt_tty *tty) {
 }
 
 LONG pty_master_read(int index, char *buffer, DWORD length, int nonblocking) {
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     for (;;) {
         jolt_lock();
-        DWORD consumed = (DWORD)tty->output_read;
-        DWORD available = (DWORD)tty->output_written - consumed;
-        if (available) {
-            DWORD count = available < length ? available : length;
-            for (DWORD position = 0; position < count; position++)
-                buffer[position] = tty->output[(consumed + position) % JOLT_TTY_SIZE];
-            InterlockedExchange(&tty->output_read, (LONG)(consumed + count));
+        DWORD count = jolt_tty_take_output(index, buffer, length);
+        if (count) {
             self->waiting = WAIT_NONE;
             jolt_wake_object(JOLT_WAIT_TTY_SPACE(index));
             jolt_unlock();
@@ -122,7 +113,7 @@ LONG pty_master_write(int index, const char *buffer, DWORD length) {
 }
 
 int tty_readiness(int index, int master) {
-    const struct jolt_tty *tty = tty_at(index);
+    const struct jolt_tty *tty = jolt_tty(index);
     int ready = LINUX_POLLOUT;
     if (master) {
         if ((DWORD)tty->output_written != (DWORD)tty->output_read) ready |= LINUX_POLLIN;
@@ -143,11 +134,11 @@ LONG tty_open(const char *absolute, DWORD type, LONG *index) {
         *index = JOLT_CONSOLE;
         return 0;
     }
-    if (!strncmp(absolute, "/dev/pts/", strlen("/dev/pts/"))) {
-        LONG number = atol(absolute + strlen("/dev/pts/"));
+    if (!strncmp(absolute, JOLT_PTS_PREFIX, strlen(JOLT_PTS_PREFIX))) {
+        LONG number = atol(absolute + strlen(JOLT_PTS_PREFIX));
         *index = number + 1;
         if (*index <= JOLT_CONSOLE || *index >= JOLT_TTYS) return error(LINUX_ENOENT);
-        struct jolt_tty *tty = tty_at(*index);
+        struct jolt_tty *tty = jolt_tty(*index);
         if (tty->state != TTY_PTY || tty->hung_up) return error(LINUX_EIO);
         if (tty->locked) return error(LINUX_EIO);
         tty->slaves++;
@@ -156,12 +147,8 @@ LONG tty_open(const char *absolute, DWORD type, LONG *index) {
     }
     if (self->ctty == JOLT_NO_TTY) return error(LINUX_ENXIO);
     *index = self->ctty;
-    if (*index != JOLT_CONSOLE) tty_at(*index)->slaves++;
+    if (*index != JOLT_CONSOLE) jolt_tty(*index)->slaves++;
     return 0;
-}
-
-int tty_number(int index) {
-    return index - 1;
 }
 
 static LONG set_nonblocking(struct jolt_description *description, DWORD pointer) {
@@ -178,10 +165,10 @@ static LONG bytes_available(const struct jolt_description *description, DWORD po
     struct jolt_kernel *k = kernel();
     DWORD count = 0;
     if (description->type == DESCRIPTION_TTY) {
-        const struct jolt_tty *tty = tty_at(description->tty);
+        const struct jolt_tty *tty = jolt_tty(description->tty);
         count = (DWORD)tty->input_written - (DWORD)tty->input_read;
     } else if (description->type == DESCRIPTION_PTY_MASTER) {
-        const struct jolt_tty *tty = tty_at(description->tty);
+        const struct jolt_tty *tty = jolt_tty(description->tty);
         count = (DWORD)tty->output_written - (DWORD)tty->output_read;
     } else if (description->type == DESCRIPTION_PIPE_READ || description->type == DESCRIPTION_STREAM) {
         const struct jolt_pipe *pipe = &k->pipes[description->pipe];
@@ -202,7 +189,7 @@ static LONG set_settings(int index, DWORD request, DWORD pointer) {
     struct linux_termios settings;
     if (!guest_copy_in(&settings, pointer, sizeof settings)) return error(LINUX_EFAULT);
     jolt_lock();
-    tty_at(index)->termios = settings;
+    jolt_tty(index)->termios = settings;
     jolt_unlock();
     if (request == LINUX_TCSETSF) jolt_tty_discard_input(index);
     return 0;
@@ -238,7 +225,7 @@ static LONG set_foreground(struct jolt_tty *tty, DWORD pointer) {
 }
 
 static LONG take_controlling(int index) {
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     jolt_lock();
     LONG result = 0;
     if (self->ctty == index) result = 0;
@@ -261,7 +248,7 @@ static LONG drop_controlling(int index) {
 static LONG set_pty_lock(int index, DWORD pointer) {
     LONG locked;
     if (!guest_copy_in(&locked, pointer, sizeof locked)) return error(LINUX_EFAULT);
-    tty_at(index)->locked = locked != 0;
+    jolt_tty(index)->locked = locked != 0;
     return 0;
 }
 
@@ -278,7 +265,7 @@ static LONG play_tone(DWORD divisor, DWORD milliseconds) {
 }
 
 static LONG terminal_ioctl(int index, DWORD request, DWORD argument) {
-    struct jolt_tty *tty = tty_at(index);
+    struct jolt_tty *tty = jolt_tty(index);
     switch (request) {
     case LINUX_TCGETS:
         return get_settings(tty, argument);
@@ -324,7 +311,7 @@ LONG sys_ioctl(const DWORD *arguments) {
     if (description->type == DESCRIPTION_SERIAL) return serial_ioctl(index, request, argument);
     int master = description->type == DESCRIPTION_PTY_MASTER;
     if (!master && description->type != DESCRIPTION_TTY) return error(LINUX_ENOTTY);
-    if (request == LINUX_TIOCGPTN) return master ? put_value(argument, tty_number(description->tty)) : error(LINUX_ENOTTY);
+    if (request == LINUX_TIOCGPTN) return master ? put_value(argument, JOLT_PTY_NUMBER(description->tty)) : error(LINUX_ENOTTY);
     if (request == LINUX_TIOCSPTLCK) return master ? set_pty_lock(description->tty, argument) : error(LINUX_ENOTTY);
     return terminal_ioctl(description->tty, request, argument);
 }

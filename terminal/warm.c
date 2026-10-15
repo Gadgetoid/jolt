@@ -2,11 +2,11 @@
 #include <string.h>
 #include "warm.h"
 #include "kernel.h"
+#include "session.h"
 
 #define WARM_BUDGET (4 * 1024 * 1024)
 #define WARM_LOW_MEMORY (2 * 1024 * 1024)
 #define WARM_CHECK_MILLISECONDS 1000
-#define NAME_CAPACITY 48
 
 struct held_image {
     HANDLE mapping;
@@ -48,11 +48,7 @@ static struct held_image *least_used(void) {
 }
 
 static int memory_low(void) {
-    MEMORYSTATUS status;
-    memset(&status, 0, sizeof status);
-    status.dwLength = sizeof status;
-    GlobalMemoryStatus(&status);
-    return status.dwAvailPhys < WARM_LOW_MEMORY;
+    return session_available_memory() < WARM_LOW_MEMORY;
 }
 
 static void evict_over_budget(void) {
@@ -64,7 +60,7 @@ void warm_hold(DWORD key, DWORD size) {
     for (int index = 0; index < JOLT_WARM_IMAGES; index++)
         if (held[index].mapping && held[index].key == key) return;
     if (size > WARM_BUDGET || memory_low()) return;
-    WCHAR name[NAME_CAPACITY];
+    WCHAR name[JOLT_OBJECT_NAME];
     jolt_image_name(name, key);
     HANDLE mapping = CreateFileMappingW(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, size, name);
     if (!mapping) return;

@@ -131,5 +131,6 @@ void script_step(void) {
         return;
     }
     char chunk[CHUNK_CAPACITY];
+    display_note_key();
     tty_type(chunk, read_chunk(chunk));
 }

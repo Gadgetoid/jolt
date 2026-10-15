@@ -47,6 +47,7 @@ const expectations = {
     apps2: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\n[2,4,6]\r\n", "mpy micropython 45", "[0, 1, 4, 9, 16]", "gnu nano, version 9.2", "ncdu 1.22", "htop 3.5.3", "frotz v2.55", "zork1.z3", "os: jolt", "ce_version: 3.00", "host: hp jornada 720", "packages: "] },
     bash: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["gnu bash, version 5.3", "assoc blue 3", "sum 55 nested deep", "first a", "status 0 0", "func arg", "subshell 3", "inner 5", "background done", "trapped", "script 2 x y", "running", "interactive 5.3", "histsize 500", "ll is aliased", "GNU Bash", "complete theme", "complete DejaVuSansMono\r\n", "\r\n1\r\n"] },
     sfeed: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["update 0", "jolt feed entry", "\r\n   feed body\r\n", "\r\npiped\r\n", "\r\nexecuted\r\n", "\r\npopened\r\n"] },
+    "vim-typing": { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["written"] },
     netapps: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\n32\r\n", "\r\n1\r\n", "jolt links test", "rendered in text mode."] },
     vi: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\njolt edited this file.\r\n"] },
 };

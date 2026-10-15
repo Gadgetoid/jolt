@@ -23,6 +23,8 @@ void display_apply(const struct display_settings *settings);
 void display_output(const char *bytes, DWORD count);
 void display_notice(const char *text);
 void display_note_key(void);
+DWORD display_key_tick(void);
+DWORD display_painted_tick(void);
 void display_report_latency(void);
 void display_drain_tty(void);
 void display_paint(void);

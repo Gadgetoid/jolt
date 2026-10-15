@@ -814,6 +814,14 @@ void display_note_key(void) {
     if (!view.key_tick) view.key_tick = GetTickCount();
 }
 
+DWORD display_key_tick(void) {
+    return view.key_tick;
+}
+
+DWORD display_painted_tick(void) {
+    return view.painted;
+}
+
 void display_report_latency(void) {
     char text[NOTICE_CAPACITY];
     if (!view.latency_count) {

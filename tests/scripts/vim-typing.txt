@@ -1,0 +1,491 @@
+vim /tmp/typing.txt
+@wait 6000
+i\c
+@wait 1000
+o\c
+@wait 100
+v\c
+@wait 200
+e\c
+@wait 400
+r\c
+@wait 100
+ \c
+@wait 100
+k\c
+@wait 300
+e\c
+@wait 100
+y\c
+@wait 200
+ \c
+@wait 300
+t\c
+@wait 300
+h\c
+@wait 100
+e\c
+@wait 100
+ \c
+@wait 100
+t\c
+@wait 200
+h\c
+@wait 100
+e\c
+@wait 100
+ \c
+@wait 100
+d\c
+@wait 200
+o\c
+@wait 100
+g\c
+@wait 500
+ \c
+@wait 300
+q\c
+@wait 100
+u\c
+@wait 400
+i\c
+@wait 400
+c\c
+@wait 300
+k\c
+@wait 100
+ \c
+@wait 300
+w\c
+@wait 200
+h\c
+@wait 100
+i\c
+@wait 100
+l\c
+@wait 100
+e\c
+@wait 300
+ \c
+@wait 500
+b\c
+@wait 200
+r\c
+@wait 200
+o\c
+@wait 100
+w\c
+@wait 300
+n\c
+@wait 100
+ \c
+@wait 300
+j\c
+@wait 300
+u\c
+@wait 500
+m\c
+@wait 400
+p\c
+@wait 100
+s\c
+@wait 100
+ \c
+@wait 300
+w\c
+@wait 400
+h\c
+@wait 100
+i\c
+@wait 200
+l\c
+@wait 100
+e\c
+@wait 300
+ \c
+@wait 400
+q\c
+@wait 300
+u\c
+@wait 100
+i\c
+@wait 300
+c\c
+@wait 100
+k\c
+@wait 200
+ \c
+@wait 400
+d\c
+@wait 200
+o\c
+@wait 500
+g\c
+@wait 200
+ \c
+@wait 200
+w\c
+@wait 200
+h\c
+@wait 200
+i\c
+@wait 200
+l\c
+@wait 100
+e\c
+@wait 500
+ \c
+@wait 100
+d\c
+@wait 500
+r\c
+@wait 100
+a\c
+@wait 100
+w\c
+@wait 300
+s\c
+@wait 200
+ \c
+@wait 300
+l\c
+@wait 200
+a\c
+@wait 400
+z\c
+@wait 200
+y\c
+@wait 200
+ \c
+@wait 300
+q\c
+@wait 100
+u\c
+@wait 300
+i\c
+@wait 200
+c\c
+@wait 100
+k\c
+@wait 500
+ \c
+@wait 200
+b\c
+@wait 200
+r\c
+@wait 200
+o\c
+@wait 100
+w\c
+@wait 400
+n\c
+@wait 100
+ \c
+@wait 500
+d\c
+@wait 300
+o\c
+@wait 500
+g\c
+@wait 500
+ \c
+@wait 200
+o\c
+@wait 400
+v\c
+@wait 200
+e\c
+@wait 300
+r\c
+@wait 200
+ \c
+@wait 300
+e\c
+@wait 200
+v\c
+@wait 100
+e\c
+@wait 500
+r\c
+@wait 100
+y\c
+@wait 200
+ \c
+@wait 200
+d\c
+@wait 400
+r\c
+@wait 100
+a\c
+@wait 100
+w\c
+@wait 400
+s\c
+@wait 400
+ \c
+@wait 200
+j\c
+@wait 300
+o\c
+@wait 400
+l\c
+@wait 500
+t\c
+@wait 200
+ \c
+@wait 200
+d\c
+@wait 200
+r\c
+@wait 400
+a\c
+@wait 200
+w\c
+@wait 100
+s\c
+@wait 200
+ \c
+@wait 200
+b\c
+@wait 300
+r\c
+@wait 100
+o\c
+@wait 200
+w\c
+@wait 100
+n\c
+@wait 100
+ \c
+@wait 500
+j\c
+@wait 100
+u\c
+@wait 400
+m\c
+@wait 100
+p\c
+@wait 200
+s\c
+@wait 200
+ \c
+@wait 500
+l\c
+@wait 100
+a\c
+@wait 100
+z\c
+@wait 200
+y\c
+@wait 200
+ \c
+@wait 300
+j\c
+@wait 100
+u\c
+@wait 500
+m\c
+@wait 200
+p\c
+@wait 500
+s\c
+@wait 300
+ \c
+@wait 200
+d\c
+@wait 200
+r\c
+@wait 200
+a\c
+@wait 400
+w\c
+@wait 200
+s\c
+@wait 100
+ \c
+@wait 100
+q\c
+@wait 100
+u\c
+@wait 100
+i\c
+@wait 100
+c\c
+@wait 400
+k\c
+@wait 100
+ \c
+@wait 100
+l\c
+@wait 500
+a\c
+@wait 300
+z\c
+@wait 100
+y\c
+@wait 200
+ \c
+@wait 200
+t\c
+@wait 100
+h\c
+@wait 200
+e\c
+@wait 300
+ \c
+@wait 200
+w\c
+@wait 300
+h\c
+@wait 200
+i\c
+@wait 100
+l\c
+@wait 400
+e\c
+@wait 500
+ \c
+@wait 300
+w\c
+@wait 400
+h\c
+@wait 400
+i\c
+@wait 400
+l\c
+@wait 100
+e\c
+@wait 200
+ \c
+@wait 500
+e\c
+@wait 500
+v\c
+@wait 400
+e\c
+@wait 500
+r\c
+@wait 300
+y\c
+@wait 200
+ \c
+@wait 200
+t\c
+@wait 200
+h\c
+@wait 100
+e\c
+@wait 200
+ \c
+@wait 400
+t\c
+@wait 100
+h\c
+@wait 100
+e\c
+@wait 100
+ \c
+@wait 100
+l\c
+@wait 100
+a\c
+@wait 100
+z\c
+@wait 200
+y\c
+@wait 300
+ \c
+@wait 100
+q\c
+@wait 100
+u\c
+@wait 300
+i\c
+@wait 100
+c\c
+@wait 300
+k\c
+@wait 100
+ \c
+@wait 200
+w\c
+@wait 100
+h\c
+@wait 100
+i\c
+@wait 500
+l\c
+@wait 100
+e\c
+@wait 300
+ \c
+@wait 200
+b\c
+@wait 400
+r\c
+@wait 200
+o\c
+@wait 200
+w\c
+@wait 300
+n\c
+@wait 200
+ \c
+@wait 200
+q\c
+@wait 100
+u\c
+@wait 500
+i\c
+@wait 200
+c\c
+@wait 200
+k\c
+@wait 200
+ \c
+@wait 200
+j\c
+@wait 100
+u\c
+@wait 100
+m\c
+@wait 100
+p\c
+@wait 400
+s\c
+@wait 200
+ \c
+@wait 400
+j\c
+@wait 200
+u\c
+@wait 500
+m\c
+@wait 400
+p\c
+@wait 100
+s\c
+@wait 300
+ \c
+@wait 100
+f\c
+@wait 300
+o\c
+@wait 200
+x\c
+@wait 100
+ \c
+@wait 400
+d\c
+@wait 100
+o\c
+@wait 500
+g\c
+@wait 300
+ \c
+@wait 200
+\e\c
+@wait 1000
+:wq
+@wait 3000
+exit 0

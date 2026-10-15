@@ -4,7 +4,7 @@ set -euo pipefail
 workspace=$(cd "$(dirname "$0")/.." && pwd)
 emulator=${JORNADA_EMU:-"$workspace/../jornada-72x-emu"}
 state=${JORNADA_STATE:-"$emulator/build/user-latest.state"}
-scripts=${JOLT_SCRIPTS:-"smoke shell interrupt vi spawn display font fullscreen-exit colour jobs apps lua network extras netapps qol desktop vim shortcut launch hold serial apps2 ping bash pty dvtm dvtm-resize serial-shell bitmap-font subst sfeed theme colour-screen fonts-screen dvtm-screen bitmap-screen scroll-screen theme-screen sfeed-screen"}
+scripts=${JOLT_SCRIPTS:-"smoke shell interrupt vi spawn display font fullscreen-exit colour jobs apps lua network extras netapps qol desktop vim shortcut launch hold serial apps2 ping bash pty dvtm dvtm-resize serial-shell bitmap-font subst sfeed theme vim-typing colour-screen fonts-screen dvtm-screen bitmap-screen scroll-screen theme-screen sfeed-screen"}
 batch_size=${JOLT_BATCH:-4}
 socket="/tmp/jolt-qa-$$.sock"
 serial_port=$((20000 + $$ % 10000))
@@ -77,6 +77,7 @@ run_script() {
     local name=$1 status=0
     printf 'run %s at %s\n' "$name" "$(date +%T)"
     rapi rm "$card/Jolt.log" 2>/dev/null || true
+    rapi rm "$card/stall.log" 2>/dev/null || true
     local launch=""
     if [[ -f tests/scripts/$name.args ]]; then launch=$(< "tests/scripts/$name.args"); fi
     rapi run "$card/JoLT-Term.exe" "--script=$name.txt --quiet ${JOLT_TRACE:-} $launch"
@@ -98,6 +99,11 @@ run_script() {
     fi
     cat -v "$qa/$name.log"
     node tests/check.js "$name" "$qa/$name.log" "$qa/$name-tty.log"
+    if [[ $name == vim-typing ]] && rapi get "$card/stall.log" "$qa/$name-stall.log" 2>/dev/null; then
+        cat "$qa/$name-stall.log"
+        printf 'FAIL: %s had keys that never reached the screen\n' "$name" >&2
+        return 1
+    fi
     sleep 3
     check_no_processes "$name"
 }

@@ -5,6 +5,7 @@ source "$(dirname "$0")/../common.sh"
 features=${VIM_FEATURES:-tiny}
 unpack_source vim-9.2.1178.tar.gz vim-9.2.1178
 source_dir="$output/src/vim-9.2.1178/src"
+patch -d "$output/src/vim-9.2.1178" -p1 < "$(dirname "$0")/zero-wait.patch" > /dev/null
 (
     cd "$source_dir"
     env "${APP_CONFIGURE_ENVIRONMENT[@]}" CFLAGS=-Os PKG_CONFIG=false \

@@ -24,7 +24,7 @@ JoLT's own source is MIT licensed (see LICENSE). Release builds include or are b
 | dvtm | 0.15 | MIT | `/usr/bin/dvtm`, with `apps/dvtm/narrow-curses.patch` |
 | sfeed | 2.4 | ISC | `/usr/bin/sfeed*` |
 | ncurses | 6.6 | X11 (MIT-style) | Terminal library linked into Vim, nano, Bash, ncdu, htop, frotz, dvtm and sfeed_curses |
-| Vim | 9.2.1178 | Vim licence | `/usr/bin/vim` |
+| Vim | 9.2.1178 | Vim licence | `/usr/bin/vim`, with `apps/vim/zero-wait.patch` |
 | Lua | 5.4.7 | MIT | `/usr/bin/lua` |
 | MicroPython | 1.29.0 | MIT | `/usr/bin/micropython` |
 | jq | 1.8.2 | MIT | `/usr/bin/jq` |

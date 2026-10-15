@@ -15,6 +15,7 @@
 #include "warm.h"
 #include "optional.h"
 #include "diagnostic.h"
+#include "stall.h"
 #include "text.h"
 #include "kernel.h"
 #include "guest-manifest.h"
@@ -90,6 +91,7 @@ static void on_timer(void) {
     display_drain_tty();
     if (!session.refused) broker_monitor();
     warm_trim();
+    stall_check();
     script_step();
     if (script_active()) {
         keep_awake();

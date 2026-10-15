@@ -96,6 +96,7 @@
 - Vim: deleting did not remove characters, other display quirks (TERM=xterm-256color, keys encoded by libvterm, terminal query replies)
 - Trailing slash was dropped in path lookup, so `file/` resolved as `file`
 - dvtm missed resizes (pselect ignored its signal mask)
+- Vim sometimes drew a typed character only after the next key: with a 1 ms clock, its zero-wait typeahead check could compute -1 ms and block in select until the next key (`apps/vim/zero-wait.patch`). `vim-typing` types 240 keys at random speeds and fails if any takes over 400 ms to reach the screen
 - Command substitutions with pipelines (`$(echo a | cat)`) sometimes came back empty: the supervisor kept a stale handle when a process slot was reused, saw the old worker's exit and closed the new process's files
 
 ## Wishlist

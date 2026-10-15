@@ -1,0 +1,11 @@
+--- a/src/ui.c
++++ b/src/ui.c
+@@ -324,7 +324,7 @@
+ 	    elapsed_time = ELAPSED_FUNC(start_tv);
+ # endif
+ 	    if (wtime >= 0)
+-		wait_time = wtime - elapsed_time;
++		wait_time = wtime > elapsed_time ? wtime - elapsed_time : 0;
+ 	    else if (delay_pending)
+ 	    {
+ 		long delay_left = p_acl - acl_elapsed;

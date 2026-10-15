@@ -12,6 +12,7 @@
 #include "tty.h"
 #include "fonts.h"
 #include "bitmapfont.h"
+#include "canvas.h"
 
 #define ORIGIN_X 2
 #define ORIGIN_Y 0
@@ -25,6 +26,8 @@
 #define OSC_CAPACITY (JOLT_GUEST_PATH + 16)
 #define FONT_FACE L"Courier New"
 #define NOTICE_CAPACITY 128
+#define DRAIN_BUDGET_MILLISECONDS 30
+#define FRAME_MILLISECONDS 33
 #define TASKBAR_CLASS L"HHTaskBar"
 #define WINDOWED_STYLE (WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_VSCROLL)
 #define FULLSCREEN_STYLE (WS_VISIBLE | WS_POPUP)
@@ -38,14 +41,13 @@ struct display_state {
     WCHAR family[LF_FACESIZE];
     int face_missing;
     struct bitmap_font bitmap;
-    struct pixel_row row;
+    struct canvas canvas;
+    DWORD painted;
     int writing;
     char notice[NOTICE_CAPACITY];
     DWORD notice_length;
     int cell_width, cell_height;
     int cursor_visible;
-    int cursor_drawn;
-    VTermPos cursor_cell;
     int scroll;
     int shown_count, shown_rows, shown_scroll;
     struct display_settings settings;
@@ -81,13 +83,9 @@ static void invalidate_all(void) {
     InvalidateRect(view.window, NULL, FALSE);
 }
 
-static void scroll_pixels(RECT area, int rightward, int downward) {
-    RECT pending;
-    int has_pending = GetUpdateRect(view.window, &pending, FALSE);
-    ScrollWindowEx(view.window, rightward, downward, &area, &area, NULL, NULL, SW_INVALIDATE);
-    if (!has_pending) return;
-    OffsetRect(&pending, rightward, downward);
-    InvalidateRect(view.window, &pending, FALSE);
+static void move_cells(int top, int bottom, int left, int right, int downward, int rightward) {
+    canvas_move(&view.canvas, ORIGIN_X, ORIGIN_Y, view.cell_width, view.cell_height, top, bottom, left, right, downward,
+        rightward);
 }
 
 static COLORREF colour_of(const VTermColor *colour) {
@@ -176,50 +174,49 @@ static void draw_run(HDC dc, int row, int start, const WCHAR *text, int length, 
     DeleteObject(brush);
 }
 
-static void paint_bitmap_row(HDC dc, int row, int first_column, int last_column) {
-    struct styled_cell cell;
-    int fallback[COLUMN_LIMIT], fallback_count = 0;
-    int columns = last_column - first_column;
-    if (columns * view.cell_width > view.row.width) columns = view.row.width / view.cell_width;
-    for (int offset = 0; offset < columns; offset++) {
-        view_cell(row, first_column + offset, &cell);
-        COLORREF foreground, background;
-        cell_colours(&cell, &foreground, &background);
-        int index = bitmap_font_index(&view.bitmap, cell.character);
-        if (index < 0 && cell.character > L' ') fallback[fallback_count++] = first_column + offset;
-        pixel_row_glyph(&view.row, &view.bitmap, offset * view.cell_width, index, (cell.style & STYLE_BOLD) != 0,
-            pixel_colour(foreground), pixel_colour(background), (cell.style & STYLE_UNDERLINE) != 0);
-    }
-    RECT bounds = cell_bounds(row, row + 1, first_column, first_column + columns);
-    BitBlt(dc, bounds.left, bounds.top, bounds.right - bounds.left, view.cell_height, view.row.dc, 0, 0, SRCCOPY);
-    INT advance = view.cell_width;
-    for (int index = 0; index < fallback_count; index++) {
-        view_cell(row, fallback[index], &cell);
-        draw_run(dc, row, fallback[index], &cell.character, 1, &cell, &advance);
-    }
+static void resolve_cell(int row, int column, struct styled_cell *styled, struct canvas_cell *resolved) {
+    view_cell(row, column, styled);
+    cell_colours(styled, &resolved->foreground, &resolved->background);
+    resolved->character = styled->character;
+    resolved->style = (WORD)(styled->style & (STYLE_BOLD | STYLE_UNDERLINE));
 }
 
-static void paint_row(HDC dc, int row, int first_column, int last_column, const INT *advances) {
-    if (view.bitmap.count && view.row.dc) {
-        paint_bitmap_row(dc, row, first_column, last_column);
-        return;
-    }
+static void render_bitmap_cell(int row, int column, const struct styled_cell *styled, const struct canvas_cell *cell) {
+    RECT bounds = cell_bounds(row, row + 1, column, column + 1);
+    if (bounds.right > view.canvas.width || bounds.bottom > view.canvas.height) return;
+    int index = bitmap_font_index(&view.bitmap, cell->character);
+    bitmap_font_render(&view.bitmap, canvas_pixel(&view.canvas, bounds.left, bounds.top), view.canvas.pitch, index,
+        (cell->style & STYLE_BOLD) != 0, canvas_colour(cell->foreground), canvas_colour(cell->background),
+        (cell->style & STYLE_UNDERLINE) != 0);
+    if (index >= 0 || cell->character <= L' ') return;
+    INT advance = view.cell_width;
+    draw_run(view.canvas.dc, row, column, &styled->character, 1, styled, &advance);
+}
+
+static void render_row(int row, int first_column, int last_column, const INT *advances) {
     WCHAR text[RUN_LIMIT];
-    struct styled_cell run_style, cell;
+    struct styled_cell run_style, styled;
+    struct canvas_cell resolved;
     int run_start = first_column, run_length = 0;
     for (int column = first_column; column < last_column; column++) {
-        view_cell(row, column, &cell);
-        if (run_length && (!same_style(&cell, &run_style) || run_length == RUN_LIMIT)) {
-            draw_run(dc, row, run_start, text, run_length, &run_style, advances);
+        resolve_cell(row, column, &styled, &resolved);
+        int changed = canvas_update_cell(&view.canvas, row, column, &resolved);
+        if (view.bitmap.count) {
+            if (changed) render_bitmap_cell(row, column, &styled, &resolved);
+            continue;
+        }
+        if (run_length && (!changed || !same_style(&styled, &run_style) || run_length == RUN_LIMIT)) {
+            draw_run(view.canvas.dc, row, run_start, text, run_length, &run_style, advances);
             run_length = 0;
         }
+        if (!changed) continue;
         if (!run_length) {
             run_start = column;
-            run_style = cell;
+            run_style = styled;
         }
-        text[run_length++] = cell.character;
+        text[run_length++] = styled.character;
     }
-    if (run_length) draw_run(dc, row, run_start, text, run_length, &run_style, advances);
+    if (run_length) draw_run(view.canvas.dc, row, run_start, text, run_length, &run_style, advances);
 }
 
 static void paint_cursor(HDC dc) {
@@ -229,11 +226,9 @@ static void paint_cursor(HDC dc) {
     RECT bounds = cell_bounds(cursor.row, cursor.row + 1, cursor.col, cursor.col + 1);
     bounds.top = bounds.bottom - CURSOR_HEIGHT;
     FillRect(dc, &bounds, view.foreground_brush);
-    view.cursor_drawn = 1;
-    view.cursor_cell = cursor;
 }
 
-static void paint_cells(HDC dc, const RECT *area) {
+static void render_cells(const RECT *area) {
     int first_row = (area->top - ORIGIN_Y) / view.cell_height;
     int last_row = (area->bottom - ORIGIN_Y + view.cell_height - 1) / view.cell_height;
     int first_column = (area->left - ORIGIN_X) / view.cell_width;
@@ -242,11 +237,12 @@ static void paint_cells(HDC dc, const RECT *area) {
     if (first_column < 0) first_column = 0;
     if (last_row > console()->rows) last_row = console()->rows;
     if (last_column > console()->columns) last_column = console()->columns;
+    if (last_row > view.canvas.rows) last_row = view.canvas.rows;
+    if (last_column > view.canvas.columns) last_column = view.canvas.columns;
     INT advances[RUN_LIMIT];
     for (int index = 0; index < RUN_LIMIT; index++) advances[index] = view.cell_width;
-    SetBkMode(dc, OPAQUE);
-    for (int row = first_row; row < last_row; row++) paint_row(dc, row, first_column, last_column, advances);
-    paint_cursor(dc);
+    SetBkMode(view.canvas.dc, OPAQUE);
+    for (int row = first_row; row < last_row; row++) render_row(row, first_column, last_column, advances);
 }
 
 static void paint_splash(HDC dc, const RECT *area) {
@@ -270,13 +266,17 @@ void display_paint(void) {
     HDC dc = BeginPaint(view.window, &paint);
     if (view.splash) {
         paint_splash(dc, &paint.rcPaint);
+    } else if (view.canvas.dc) {
+        const RECT *area = &paint.rcPaint;
+        render_cells(area);
+        BitBlt(dc, area->left, area->top, area->right - area->left, area->bottom - area->top, view.canvas.dc, area->left,
+            area->top, SRCCOPY);
+        paint_cursor(dc);
     } else {
-        paint_cells(dc, &paint.rcPaint);
-        RECT grid = cell_bounds(0, console()->rows, 0, console()->columns);
-        ExcludeClipRect(dc, grid.left, grid.top, grid.right, grid.bottom);
         FillRect(dc, &paint.rcPaint, view.background_brush);
     }
     EndPaint(view.window, &paint);
+    view.painted = GetTickCount();
 }
 
 static void update_scrollbar(void) {
@@ -302,17 +302,9 @@ void display_scroll_to(int lines_back) {
     if (lines_back == view.scroll) return;
     int moved = lines_back - view.scroll, rows = console()->rows;
     view.scroll = lines_back;
-    if (view.splash || moved >= rows || -moved >= rows) {
-        invalidate_all();
-    } else {
-        scroll_pixels(cell_bounds(0, rows, 0, console()->columns), 0, moved * view.cell_height);
-        if (view.cursor_drawn) invalidate_cell(view.cursor_cell.row + moved, view.cursor_cell.col);
-        if (!lines_back) {
-            VTermPos cursor;
-            vterm_state_get_cursorpos(vterm_obtain_state(view.terminal), &cursor);
-            invalidate_cell(cursor.row, cursor.col);
-        }
-    }
+    if (!view.splash && moved > 0 && moved < rows) move_cells(0, rows - moved, 0, console()->columns, moved, 0);
+    if (!view.splash && moved < 0 && -moved < rows) move_cells(-moved, rows, 0, console()->columns, moved, 0);
+    invalidate_all();
     update_scrollbar();
 }
 
@@ -357,24 +349,14 @@ static int larger(int first, int second) {
     return first > second ? first : second;
 }
 
-static int inside(VTermPos position, VTermRect rect) {
-    return position.row >= rect.start_row && position.row < rect.end_row &&
-        position.col >= rect.start_col && position.col < rect.end_col;
-}
-
 static int on_move_rect(VTermRect destination, VTermRect source, void *user) {
     (void)user;
-    if (view.scroll || view.splash) return 0;
-    if (destination.start_row != source.start_row && destination.start_col != source.start_col) return 0;
+    if (view.scroll || view.splash || !view.canvas.dc) return 0;
+    move_cells(source.start_row, source.end_row, source.start_col, source.end_col, destination.start_row - source.start_row,
+        destination.start_col - source.start_col);
     RECT area = cell_bounds(smaller(source.start_row, destination.start_row), larger(source.end_row, destination.end_row),
         smaller(source.start_col, destination.start_col), larger(source.end_col, destination.end_col));
-    int rightward = (destination.start_col - source.start_col) * view.cell_width;
-    int downward = (destination.start_row - source.start_row) * view.cell_height;
-    scroll_pixels(area, rightward, downward);
-    if (view.cursor_drawn && inside(view.cursor_cell, source)) {
-        invalidate_cell(view.cursor_cell.row + destination.start_row - source.start_row,
-            view.cursor_cell.col + destination.start_col - source.start_col);
-    }
+    InvalidateRect(view.window, &area, FALSE);
     return 1;
 }
 
@@ -482,16 +464,23 @@ void display_notice(const char *text) {
     view.notice_length += length;
 }
 
-void display_drain_tty(void) {
+static int drain_once(void) {
     struct jolt_tty *tty = console();
     char buffer[JOLT_TTY_SIZE];
     DWORD consumed = (DWORD)tty->output_read;
     DWORD count = (DWORD)tty->output_written - consumed;
-    if (!count) return;
+    if (!count) return 0;
     if (count > sizeof buffer) count = sizeof buffer;
     for (DWORD index = 0; index < count; index++) buffer[index] = tty->output[(consumed + index) % JOLT_TTY_SIZE];
     InterlockedExchange(&tty->output_read, (LONG)(consumed + count));
     display_output(buffer, count);
+    return 1;
+}
+
+void display_drain_tty(void) {
+    DWORD began = GetTickCount();
+    while (drain_once() && GetTickCount() - began < DRAIN_BUDGET_MILLISECONDS) {}
+    if (GetTickCount() - view.painted >= FRAME_MILLISECONDS) UpdateWindow(view.window);
 }
 
 static HFONT create_font(int height, int weight, const WCHAR *family) {
@@ -548,15 +537,8 @@ static int load_bitmap_font(void) {
         bitmap_font_free(&font);
         return 0;
     }
-    struct pixel_row row;
-    if (!pixel_row_create(&row, GetSystemMetrics(SM_CXSCREEN) + font.width, font.height)) {
-        bitmap_font_free(&font);
-        return 0;
-    }
     bitmap_font_free(&view.bitmap);
-    pixel_row_free(&view.row);
     view.bitmap = font;
-    view.row = row;
     view.cell_width = font.width;
     view.cell_height = font.height;
     size_t index = 0;
@@ -565,18 +547,31 @@ static int load_bitmap_font(void) {
     return 1;
 }
 
+static void refill_canvas(void) {
+    if (view.canvas.dc && view.theme) canvas_fill(&view.canvas, view.theme->background);
+}
+
+static int ensure_canvas(int rows, int columns) {
+    RECT client;
+    GetClientRect(view.window, &client);
+    int fresh = !view.canvas.dc || view.canvas.width != client.right || view.canvas.height != client.bottom ||
+        view.canvas.rows != rows || view.canvas.columns != columns;
+    if (!fresh) return 0;
+    if (canvas_resize(&view.canvas, client.right, client.bottom, rows, columns)) refill_canvas();
+    return 1;
+}
+
 static void load_fonts(void) {
     WCHAR family[LF_FACESIZE];
     view.face_missing = 0;
+    refill_canvas();
     if (view.settings.face[0]) {
         if (load_bitmap_font()) return;
         bitmap_font_free(&view.bitmap);
-        pixel_row_free(&view.row);
         if (resolve_face(family) && create_fonts(family, 1, view.settings.font_height)) return;
         view.face_missing = 1;
     }
     bitmap_font_free(&view.bitmap);
-    pixel_row_free(&view.row);
     create_fonts(FONT_FACE, 0, view.settings.font_height);
 }
 
@@ -590,6 +585,7 @@ static void apply_theme(void) {
     if (view.background_brush) DeleteObject(view.background_brush);
     view.foreground_brush = CreateSolidBrush(view.theme->foreground);
     view.background_brush = CreateSolidBrush(view.theme->background);
+    refill_canvas();
     if (!view.terminal) return;
     VTermState *state = vterm_obtain_state(view.terminal);
     vterm_state_set_bold_highbright(state, view.settings.theme == THEME_CLASSIC);
@@ -617,6 +613,7 @@ void display_resize(void) {
     int rows, columns;
     grid_size(&rows, &columns);
     if (columns < MINIMUM_COLUMNS || rows < MINIMUM_ROWS) return;
+    if (ensure_canvas(rows, columns)) invalidate_all();
     if (columns == console()->columns && rows == console()->rows) return;
     vterm_set_size(view.terminal, rows, columns);
     vterm_screen_flush_damage(view.screen);
@@ -677,6 +674,7 @@ int display_create(HWND window, const struct display_settings *settings, display
     grid_size(&rows, &columns);
     console()->rows = (WORD)rows;
     console()->columns = (WORD)columns;
+    ensure_canvas(rows, columns);
     view.terminal = vterm_new(rows, columns);
     if (!view.terminal) return 0;
     vterm_set_utf8(view.terminal, 1);
@@ -700,7 +698,7 @@ void display_destroy(void) {
     if (view.background_brush) DeleteObject(view.background_brush);
     if (view.terminal) vterm_free(view.terminal);
     bitmap_font_free(&view.bitmap);
-    pixel_row_free(&view.row);
+    canvas_free(&view.canvas);
     fonts_release();
     scrollback_free();
     memset(&view, 0, sizeof view);

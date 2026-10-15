@@ -12,9 +12,19 @@
 #define HEADER_SIZE 16
 #define FACE_CAPACITY 32
 #define FILE_LIMIT (256 * 1024)
-#define RED_MASK 0xf800
-#define GREEN_MASK 0x07e0
-#define BLUE_MASK 0x001f
+#define MAXIMUM_WIDTH 16
+#define EXPANSION_SLOTS 4
+#define EXPANSION_PATTERNS 256
+#define EXPANSION_WIDTH 8
+
+struct expansion {
+    WORD foreground, background;
+    int used;
+    WORD pixels[EXPANSION_PATTERNS][EXPANSION_WIDTH];
+};
+
+static struct expansion expansions[EXPANSION_SLOTS];
+static int expansion_clock;
 
 struct font_header {
     char magic[4];
@@ -107,6 +117,25 @@ static BYTE *read_file(const WCHAR *path, DWORD *size) {
     return NULL;
 }
 
+static WORD *unpack_rows(const struct font_header *header, const BYTE *bits) {
+    WORD *rows = LocalAlloc(LMEM_FIXED, header->count * header->height * sizeof(WORD));
+    if (!rows) return NULL;
+    for (DWORD glyph = 0; glyph < header->count; glyph++) {
+        int left = (int)(glyph % header->columns) * header->width;
+        int top = (int)(glyph / header->columns) * header->height;
+        for (int y = 0; y < header->height; y++) {
+            const BYTE *line = bits + (top + y) * header->stride;
+            WORD value = 0;
+            for (int x = 0; x < header->width; x++) {
+                int bit = left + x;
+                if (!(line[bit >> 3] & (0x80 >> (bit & 7)))) value |= (WORD)(0x8000 >> x);
+            }
+            rows[glyph * header->height + y] = value;
+        }
+    }
+    return rows;
+}
+
 static int load_atlas(const WCHAR *path, struct bitmap_font *font, int slot) {
     DWORD size = 0;
     BYTE *data = read_file(path, &size);
@@ -114,27 +143,23 @@ static int load_atlas(const WCHAR *path, struct bitmap_font *font, int slot) {
     struct font_header header;
     memcpy(&header, data, sizeof header);
     DWORD rows = (header.count + header.columns - 1) / header.columns * header.height;
-    DWORD bits_size = rows * header.stride;
-    DWORD needed = HEADER_SIZE + header.count * sizeof(DWORD) + bits_size;
-    int valid = !memcmp(header.magic, MAGIC, sizeof header.magic) && header.columns && header.width && header.height &&
+    DWORD needed = HEADER_SIZE + header.count * sizeof(DWORD) + rows * header.stride;
+    int valid = !memcmp(header.magic, MAGIC, sizeof header.magic) && header.columns && header.width &&
+        header.width <= MAXIMUM_WIDTH && header.height &&
         header.stride == (header.columns * header.width + 15) / 16 * 2 && needed <= size;
     if (valid && slot == 0) {
         font->width = header.width;
         font->height = header.height;
-        font->columns = header.columns;
         font->count = (int)header.count;
-        font->stride = header.stride;
         font->codepoints = LocalAlloc(LMEM_FIXED, header.count * sizeof(DWORD));
         if (font->codepoints) memcpy(font->codepoints, data + HEADER_SIZE, header.count * sizeof(DWORD));
         else valid = 0;
     } else if (valid) {
-        valid = font->width == header.width && font->height == header.height && font->count == (int)header.count &&
-            font->columns == header.columns && font->stride == header.stride;
+        valid = font->width == header.width && font->height == header.height && font->count == (int)header.count;
     }
     if (valid) {
-        font->bits[slot] = LocalAlloc(LMEM_FIXED, bits_size);
-        if (font->bits[slot]) memcpy(font->bits[slot], data + HEADER_SIZE + header.count * sizeof(DWORD), bits_size);
-        else valid = 0;
+        font->rows[slot] = unpack_rows(&header, data + HEADER_SIZE + header.count * sizeof(DWORD));
+        valid = font->rows[slot] != NULL;
     }
     LocalFree(data);
     return valid;
@@ -142,7 +167,7 @@ static int load_atlas(const WCHAR *path, struct bitmap_font *font, int slot) {
 
 void bitmap_font_free(struct bitmap_font *font) {
     for (int slot = 0; slot < 2; slot++)
-        if (font->bits[slot]) LocalFree(font->bits[slot]);
+        if (font->rows[slot]) LocalFree(font->rows[slot]);
     if (font->codepoints) LocalFree(font->codepoints);
     memset(font, 0, sizeof *font);
 }
@@ -173,60 +198,37 @@ int bitmap_font_index(const struct bitmap_font *font, WCHAR character) {
     return -1;
 }
 
-int pixel_row_create(struct pixel_row *row, int width, int height) {
-    struct {
-        BITMAPINFOHEADER header;
-        DWORD masks[3];
-    } info;
-    memset(row, 0, sizeof *row);
-    memset(&info, 0, sizeof info);
-    info.header.biSize = sizeof info.header;
-    info.header.biWidth = width;
-    info.header.biHeight = -height;
-    info.header.biPlanes = 1;
-    info.header.biBitCount = 16;
-    info.header.biCompression = BI_BITFIELDS;
-    info.masks[0] = RED_MASK;
-    info.masks[1] = GREEN_MASK;
-    info.masks[2] = BLUE_MASK;
-    void *pixels = NULL;
-    row->bitmap = CreateDIBSection(NULL, (BITMAPINFO *)&info, DIB_RGB_COLORS, &pixels, NULL, 0);
-    row->dc = row->bitmap ? CreateCompatibleDC(NULL) : NULL;
-    if (!row->bitmap || !row->dc || !pixels) {
-        pixel_row_free(row);
-        return 0;
-    }
-    SelectObject(row->dc, row->bitmap);
-    row->pixels = pixels;
-    row->width = width;
-    row->height = height;
-    row->pitch = (width * 2 + 3) / 4 * 2;
-    return 1;
-}
-
-void pixel_row_free(struct pixel_row *row) {
-    if (row->dc) DeleteDC(row->dc);
-    if (row->bitmap) DeleteObject(row->bitmap);
-    memset(row, 0, sizeof *row);
-}
-
-WORD pixel_colour(COLORREF colour) {
-    return (WORD)(((GetRValue(colour) >> 3) << 11) | ((GetGValue(colour) >> 2) << 5) | (GetBValue(colour) >> 3));
-}
-
-void pixel_row_glyph(struct pixel_row *row, const struct bitmap_font *font, int x, int index, int bold, WORD foreground,
-    WORD background, int underline) {
-    const BYTE *bits = bold && font->bits[1] ? font->bits[1] : font->bits[0];
-    int left = index >= 0 ? (index % font->columns) * font->width : 0;
-    int top = index >= 0 ? (index / font->columns) * font->height : 0;
-    for (int y = 0; y < font->height && y < row->height; y++) {
-        WORD *target = row->pixels + y * row->pitch + x;
-        const BYTE *source = bits + (top + y) * font->stride;
-        int line = underline && y == font->height - 1;
-        for (int column = 0; column < font->width && x + column < row->width; column++) {
-            int bit = left + column;
-            int ink = index >= 0 && !(source[bit >> 3] & (0x80 >> (bit & 7)));
-            target[column] = ink || line ? foreground : background;
+static const struct expansion *expansion_for(WORD foreground, WORD background) {
+    struct expansion *oldest = &expansions[0];
+    for (int slot = 0; slot < EXPANSION_SLOTS; slot++) {
+        struct expansion *candidate = &expansions[slot];
+        if (candidate->used && candidate->foreground == foreground && candidate->background == background) {
+            candidate->used = ++expansion_clock;
+            return candidate;
         }
+        if (candidate->used < oldest->used) oldest = candidate;
+    }
+    for (int bits = 0; bits < EXPANSION_PATTERNS; bits++)
+        for (int pixel = 0; pixel < EXPANSION_WIDTH; pixel++)
+            oldest->pixels[bits][pixel] = bits & (0x80 >> pixel) ? foreground : background;
+    oldest->foreground = foreground;
+    oldest->background = background;
+    oldest->used = ++expansion_clock;
+    return oldest;
+}
+
+void bitmap_font_render(const struct bitmap_font *font, WORD *target, int pitch, int index, int bold, WORD foreground,
+    WORD background, int underline) {
+    const struct expansion *table = expansion_for(foreground, background);
+    const WORD *glyph = NULL;
+    if (index >= 0) glyph = (bold && font->rows[1] ? font->rows[1] : font->rows[0]) + index * font->height;
+    int first = font->width < EXPANSION_WIDTH ? font->width : EXPANSION_WIDTH;
+    int second = font->width - first;
+    for (int y = 0; y < font->height; y++, target += pitch) {
+        WORD bits = glyph ? glyph[y] : 0;
+        if (underline && y == font->height - 1) bits = 0xffff;
+        const WORD *high = table->pixels[bits >> 8], *low = table->pixels[bits & 0xff];
+        for (int x = 0; x < first; x++) target[x] = high[x];
+        for (int x = 0; x < second; x++) target[EXPANSION_WIDTH + x] = low[x];
     }
 }

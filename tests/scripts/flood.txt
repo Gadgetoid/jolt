@@ -1,0 +1,9 @@
+jolt fs
+jolt face spleen
+jolt font 8
+time seq 1 3000
+time cat /usr/share/fonts/LICENSE-DejaVu
+jolt face default
+jolt font 16
+time seq 1 3000
+exit 0

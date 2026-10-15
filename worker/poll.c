@@ -205,7 +205,15 @@ static LONG pselect(const DWORD *arguments, int wide) {
     LONG failure;
     DWORD timeout = timespec_milliseconds(arguments[4], wide, &failure);
     if (failure) return failure;
-    return select_descriptors(arguments[0], arguments[1], arguments[2], arguments[3], timeout);
+    DWORD mask_argument[2] = { 0, 0 }, mask = 0;
+    if (arguments[5] && !guest_copy_in(mask_argument, arguments[5], sizeof mask_argument)) return error(LINUX_EFAULT);
+    if (mask_argument[0]) {
+        if (!guest_copy_in(&mask, mask_argument[0], sizeof mask)) return error(LINUX_EFAULT);
+        suspend_signals(mask);
+    }
+    LONG result = select_descriptors(arguments[0], arguments[1], arguments[2], arguments[3], timeout);
+    if (mask_argument[0] && result != error(LINUX_EINTR)) resume_signals();
+    return result;
 }
 
 LONG sys_pselect6(const DWORD *arguments) {

@@ -1,0 +1,7 @@
+(sleep 8; jolt fs) & dvtm
+@wait 12000
+stty size
+@wait 2000
+\x07qq\c
+@wait 3000
+exit 0

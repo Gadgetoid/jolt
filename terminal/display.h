@@ -12,6 +12,7 @@ struct display_settings {
     char theme[THEME_NAME_CAPACITY];
     enum hotkey_mode hotkeys;
     char face[LF_FACESIZE];
+    int heavy;
 };
 
 typedef void (*display_command_handler)(const char *command);

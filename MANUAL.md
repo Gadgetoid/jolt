@@ -74,6 +74,7 @@ jolt COMMAND [ARGUMENTS]
 | `jolt font N` | Font height in pixels, 8 to 32 (default 16) |
 | `jolt face NAME\|default` | Fixed-width font (default Courier New) |
 | `jolt fonts` | List the fonts that come with JoLT |
+| `jolt bold on\|off` | Draw all text in bold |
 | `jolt mount` | List CE folders mounted into the Linux tree |
 | `jolt mount CEPATH DIR` | Mount a CE folder at `DIR` |
 | `jolt umount DIR` | Remove a mount |
@@ -165,6 +166,25 @@ jolt font 8
 | `terminus` | 12 (6x12), 14, 16, 18, 20, 24 | 106 columns, 20 rows |
 
 Bitmap fonts only come in these sizes. `jolt font N` picks the largest size that isn't bigger than N, and `@font+` and `@font-` step to the next one. Terminus has its own bold; Spleen's bold is drawn one pixel wider. Characters a bitmap font doesn't have are drawn with Courier New.
+
+### Bolder text
+
+If text is too thin to read comfortably, `jolt bold on` draws everything in bold. It works with every font. Terminus has a designed bold, so it reads well at small sizes:
+
+```
+jolt face terminus
+jolt bold on
+```
+
+### Your own bitmap fonts
+
+Any fixed-width BDF font up to 16 pixels wide can be converted on a PC with Node.js:
+
+```
+node tools/bdf2jbf.js myfont.bdf myfont-14.jbf myfont-bold.bdf myfont-14-bold.jbf
+```
+
+Use `-` in place of the bold `.bdf` to have one drawn a pixel wider. Copy both `.jbf` files into `/usr/share/fonts`, then `jolt face myfont`. Name each file `FACE-HEIGHT.jbf` and `FACE-HEIGHT-bold.jbf` in lower case; add a pair per size.
 
 ## System information
 

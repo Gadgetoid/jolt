@@ -9,7 +9,7 @@ shopt -s histappend checkwinsize
 _jolt() {
     local word=${COMP_WORDS[COMP_CWORD]} choices=
     if [ "$COMP_CWORD" -eq 1 ]; then
-        choices="fs win dm lm font face fonts theme themes mount umount open battery shortcut hotkeys keys latency serial-shell help"
+        choices="fs win dm lm font face fonts bold theme themes mount umount open battery shortcut hotkeys keys latency serial-shell help"
     elif [ "$COMP_CWORD" -eq 2 ]; then
         case ${COMP_WORDS[1]} in
             theme)
@@ -24,6 +24,7 @@ _jolt() {
                 done
                 ;;
             hotkeys) choices="off fullscreen always" ;;
+            bold) choices="on off" ;;
             font) choices="8 10 12 14 16 18 20 24 28 32" ;;
             face)
                 choices=default

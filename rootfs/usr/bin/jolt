@@ -8,6 +8,7 @@ usage() {
     echo "  font N  font height in pixels, 8-32 (default 16)"
     echo "  face NAME|default  fixed-width font, see jolt fonts (default Courier New)"
     echo "  fonts  list the fonts in /usr/share/fonts, bitmap ones with their sizes"
+    echo "  bold on|off  draw all text in bold, for legibility"
     echo "  theme NAME  colour theme, see jolt themes (default classic)"
     echo "  themes  list the colour themes in /usr/share/themes"
     echo "  mount [CEPATH DIR]  map a CE folder into the tree, or list mounts"
@@ -156,6 +157,12 @@ case "$1" in
         osc "face=$2"
         ;;
     fonts) list_fonts ;;
+    bold)
+        case "$2" in
+            on|off) osc "bold=$2" ;;
+            *) fail_usage "bold on|off" "draw all text in bold, which can be easier to read" ;;
+        esac
+        ;;
     theme)
         case "$2" in
             ''|*[!A-Za-z0-9_-]*)

@@ -17,7 +17,7 @@
 #define DEFAULT_FACE "default"
 #define MISSING_CAPACITY 96
 
-static struct display_settings current = { 0, 0, FONT_DEFAULT, THEME_DEFAULT, HOTKEYS_FULLSCREEN, "" };
+static struct display_settings current = { 0, 0, FONT_DEFAULT, THEME_DEFAULT, HOTKEYS_FULLSCREEN, "", 0 };
 static const char *const hotkey_modes[] = { "off", "fullscreen", "always" };
 
 static int valid_font(int height) {
@@ -63,9 +63,9 @@ static int set_face(const char *text) {
 static void save(void) {
     char text[SETTINGS_CAPACITY];
     int length = snprintf(text, sizeof text,
-        "fullscreen=%d\r\ndark=%d\r\nfont=%d\r\ntheme=%s\r\nhotkeys=%s\r\nface=%s\r\n",
+        "fullscreen=%d\r\ndark=%d\r\nfont=%d\r\ntheme=%s\r\nhotkeys=%s\r\nface=%s\r\nbold=%d\r\n",
         current.fullscreen, current.dark, current.font_height, current.theme, hotkey_modes[current.hotkeys],
-        current.face);
+        current.face, current.heavy);
     if (length > 0) session_write_file(SETTINGS_FILE, text, (DWORD)length, NULL, 0);
 }
 
@@ -81,6 +81,7 @@ void settings_load(struct display_settings *settings) {
         text[count] = 0;
         current.fullscreen = strstr(text, "fullscreen=1") != NULL;
         current.dark = strstr(text, "dark=1") != NULL;
+        current.heavy = strstr(text, "bold=1") != NULL;
         const char *font = value_of(text, "font=");
         if (font && valid_font(atoi(font))) current.font_height = atoi(font);
         const char *face = value_of(text, "face=");
@@ -123,6 +124,8 @@ static int apply_command(const char *command) {
     else if ((value = argument(command, "font=")) && valid_font(atoi(value))) current.font_height = atoi(value);
     else if ((value = argument(command, "theme="))) return set_theme(value);
     else if ((value = argument(command, "face="))) return set_face(value);
+    else if (!strcmp(command, "bold=on")) current.heavy = 1;
+    else if (!strcmp(command, "bold=off")) current.heavy = 0;
     else if ((value = argument(command, "hotkeys="))) return parse_hotkey_mode(value, &current.hotkeys);
     else return 0;
     return 1;

@@ -197,7 +197,7 @@ static void render_bitmap_cell(int row, int column, const struct styled_cell *st
     if (bounds.right > view.canvas.width || bounds.bottom > view.canvas.height) return;
     int index = bitmap_font_index(&view.bitmap, cell->character);
     bitmap_font_render(&view.bitmap, canvas_pixel(&view.canvas, bounds.left, bounds.top), view.canvas.pitch, index,
-        (cell->style & STYLE_BOLD) != 0, canvas_colour(cell->foreground), canvas_colour(cell->background),
+        (cell->style & STYLE_BOLD) || view.settings.heavy, canvas_colour(cell->foreground), canvas_colour(cell->background),
         (cell->style & STYLE_UNDERLINE) != 0);
     if (index >= 0 || cell->character <= L' ') return;
     INT advance = view.cell_width;
@@ -536,8 +536,8 @@ static int measure_font(HFONT font, int require_fixed, TEXTMETRICW *metrics) {
 }
 
 static int create_fonts(const WCHAR *family, int require_fixed, int height) {
-    HFONT regular = create_font(height, FW_NORMAL, family);
-    HFONT bold = create_font(height, FW_BOLD, family);
+    HFONT regular = create_font(height, view.settings.heavy ? FW_BOLD : FW_NORMAL, family);
+    HFONT bold = create_font(height, view.settings.heavy ? FW_HEAVY : FW_BOLD, family);
     TEXTMETRICW metrics;
     if (!regular || !bold || !measure_font(regular, require_fixed, &metrics)) {
         if (regular) DeleteObject(regular);
@@ -680,7 +680,8 @@ static void apply_layout(void) {
 }
 
 void display_apply(const struct display_settings *settings) {
-    int font_changed = settings->font_height != view.settings.font_height || strcmp(settings->face, view.settings.face);
+    int font_changed = settings->font_height != view.settings.font_height || strcmp(settings->face, view.settings.face) ||
+        settings->heavy != view.settings.heavy;
     view.settings = *settings;
     if (font_changed) load_fonts();
     apply_theme();

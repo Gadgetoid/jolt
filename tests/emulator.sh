@@ -38,7 +38,7 @@ start_emulator() {
     "$emulator/headless" --rom="$emulator/rom/jornada720.bin" \
         --eeprom="$emulator/rom/jorn720_eeprom.bin" --load="$state" \
         --card="$workspace/$qa/card.cf" --net=0 --rapi="$socket" --tcp-com4="$serial_port" \
-        --seconds=1000000 --realtime=4 ${JOLT_EMULATOR_FLAGS:-} --screenshot="$workspace/$qa/screen.png" \
+        --seconds=1000000 --realtime=${JOLT_REALTIME:-4} ${JOLT_EMULATOR_FLAGS:-} --screenshot="$workspace/$qa/screen.png" \
         > "$qa/emulator.log" 2>&1 &
     emulator_pid=$!
     JOLT_SOCKET="$socket" JOLT_LOG="$qa/emulator.log" node tests/wait-desktop.js

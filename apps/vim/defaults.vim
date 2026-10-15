@@ -7,3 +7,5 @@ set incsearch
 set scrolloff=5
 set nrformats-=octal
 set showmode
+set noswapfile
+set nofsync

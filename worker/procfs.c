@@ -333,7 +333,7 @@ static int apm_status(BYTE flag) {
 static LONG render_apm(char *buffer, DWORD capacity) {
     SYSTEM_POWER_STATUS_EX power;
     memset(&power, 0, sizeof power);
-    if (!GetSystemPowerStatusEx(&power, TRUE)) {
+    if (!GetSystemPowerStatusEx(&power, FALSE)) {
         power.ACLineStatus = AC_LINE_UNKNOWN;
         power.BatteryFlag = BATTERY_FLAG_UNKNOWN;
         power.BatteryLifePercent = CE_UNKNOWN_PERCENT;

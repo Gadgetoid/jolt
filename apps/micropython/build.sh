@@ -5,6 +5,7 @@ source "$(dirname "$0")/../common.sh"
 recipe=$(cd "$(dirname "$0")" && pwd)
 unpack_source micropython-1.29.0.tar.gz micropython-1.29.0
 source_dir="$output/src/micropython-1.29.0"
+patch -d "$source_dir" -p1 < "$recipe/blocking-delay.patch" > /dev/null
 mkdir -p "$source_dir/lib/micropython-lib"
 touch "$source_dir/lib/micropython-lib/README.md"
 make -C "$source_dir/mpy-cross" -j"$jobs" CC=cc > "$source_dir/mpy-cross.log" 2>&1

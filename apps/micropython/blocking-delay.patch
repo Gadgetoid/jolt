@@ -1,0 +1,19 @@
+--- a/ports/unix/unix_mphal.c
++++ b/ports/unix/unix_mphal.c
+@@ -242,12 +242,10 @@
+ 
+ #ifndef mp_hal_delay_ms
+ void mp_hal_delay_ms(mp_uint_t ms) {
+-    if (ms) {
+-        mp_uint_t start = mp_hal_ticks_ms();
+-        while (mp_hal_ticks_ms() - start < ms) {
+-            mp_event_wait_ms(1);
+-        }
+-    } else {
++    mp_uint_t start = mp_hal_ticks_ms();
++    mp_handle_pending(true);
++    while (mp_hal_ticks_ms() - start < ms) {
++        usleep((ms - (mp_hal_ticks_ms() - start)) * 1000);
+         mp_handle_pending(true);
+     }
+ }

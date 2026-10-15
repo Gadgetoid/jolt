@@ -30,7 +30,6 @@ const expectations = {
     perf: { result: [], tty: [] },
     "bash-perf": { result: [], tty: [] },
     flood: { result: [], tty: [] },
-    warm: { result: [], tty: [] },
     dvtm: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["inside-42", "htop-status-0", "after dvtm 0", "\r\n0\r\n"] },
     "serial-shell": { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["serial shell status 0", "serial-42 /dev/pts/0", "\r\nonlcr\r\n"] },
     "dvtm-resize": { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["20 106"] },

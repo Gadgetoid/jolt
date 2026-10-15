@@ -125,6 +125,15 @@
 - Faster fork setup (spare hand-off, about 20 ms)
 - Workers exit when JoLT-Term dies; a watchdog
 
+### SHARP Brain support
+
+Reports from Brain users (CE 6.0, ARM926EJ-S):
+
+- JoLT-Term fails to launch silently: the Brain's coredll lacks CryptAcquireContextW, CryptGenRandom and CryptReleaseContext. Both callers (terminal/broker.c, worker/random.c) already fall back without CryptoAPI, so resolving these with GetProcAddress should fix it
+- With the exports patched into coredll it reaches the splash, then crashes. Cause unknown; CE 6.0's memory and process model differs from CE 3.0's, so VirtualCopy, shared mappings and cross-process access are suspects
+- CPU should be fine: ARMv4 code runs on the ARM926EJ-S
+- Untested: screen size, keyboard, hot keys; /proc/cpuinfo is hardcoded to StrongARM-1110
+
 ### Possible?
 
 - Tiny Core Linux style expansion apps, like .tcz? Or could `/Storage Card/JoLT/root/usr/bin` just hold runnable user apps with no need for containers?

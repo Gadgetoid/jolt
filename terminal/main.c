@@ -12,6 +12,7 @@
 #include "sound.h"
 #include "desktop.h"
 #include "hotkeys.h"
+#include "warm.h"
 #include "text.h"
 #include "kernel.h"
 #include "guest-manifest.h"
@@ -68,6 +69,7 @@ static void end_session(void) {
 static void on_timer(void) {
     display_drain_tty();
     if (!session.refused) broker_monitor();
+    warm_trim();
     script_step();
     if (script_active()) {
         SystemIdleTimerReset();
@@ -86,6 +88,7 @@ static void on_destroy(void) {
         broker_stop();
         session_save_result();
     }
+    warm_release();
     PostQuitMessage(0);
 }
 
@@ -104,6 +107,9 @@ static LRESULT CALLBACK window_procedure(HWND window, UINT message, WPARAM wpara
         return 0;
     case JOLT_CLIPBOARD_MESSAGE:
         desktop_clipboard_commit();
+        return 0;
+    case JOLT_WARM_MESSAGE:
+        warm_hold((DWORD)wparam, (DWORD)lparam);
         return 0;
     case JOLT_SOUND_MESSAGE:
         sound_tone((DWORD)wparam, LOWORD(lparam), (short)HIWORD(lparam));

@@ -272,7 +272,7 @@ Things to do with them:
 
 JoLT uses memory as and when programs are loaded, sharing with your Windows CE environment. Some programs, like links and vim, can be quite large and may take a moment to start up (loading from your CF card into RAM).
 
-Every running program is its own CE process. Memory is freed when the program exits. Free memory is shown by `free -h` and `joltfetch`. If you run short, close CE applications or other JoLT programs. Only 16 Linux processes can run at once.
+Every running program is its own CE process. Memory is freed when the program exits, except that JoLT keeps up to 4 MB of recently used programs loaded so they start faster next time. It lets them go when free memory runs low. Free memory is shown by `free -h` and `joltfetch`. If you run short, close CE applications or other JoLT programs. Only 16 Linux processes can run at once.
 
 ## Programs
 

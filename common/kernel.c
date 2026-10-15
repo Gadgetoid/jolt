@@ -2,6 +2,8 @@
 #include <string.h>
 #include <wchar.h>
 
+#define IMAGE_KEY_DIGITS 8
+
 struct jolt_runtime jolt;
 
 void jolt_object_name(WCHAR *name, const WCHAR *prefix, DWORD identifier, int index) {
@@ -232,3 +234,36 @@ void jolt_process_exit(int slot, DWORD status) {
         PostMessageW((HWND)kernel->window, JOLT_TTY_MESSAGE, 0, 0);
 }
 
+
+void jolt_image_name(WCHAR *name, DWORD key) {
+    static const WCHAR digits[] = L"0123456789abcdef";
+    jolt_object_name(name, L"Jolt-app-", jolt.identifier, -1);
+    size_t length = wcslen(name);
+    name[length++] = L'-';
+    for (int position = IMAGE_KEY_DIGITS - 1; position >= 0; position--) name[length++] = digits[(key >> (position * 4)) & 15];
+    name[length] = 0;
+}
+
+void jolt_image_touch(DWORD key, DWORD size) {
+    struct jolt_kernel *kernel = jolt.kernel;
+    jolt_lock();
+    struct jolt_warm *slot = &kernel->warm[0];
+    for (int index = 0; index < JOLT_WARM_IMAGES; index++) {
+        struct jolt_warm *entry = &kernel->warm[index];
+        if (entry->key == key) {
+            slot = entry;
+            break;
+        }
+        if (entry->used < slot->used) slot = entry;
+    }
+    slot->key = key;
+    slot->size = size;
+    slot->used = ++kernel->warm_clock;
+    jolt_unlock();
+}
+
+LONG jolt_image_used(DWORD key) {
+    for (int index = 0; index < JOLT_WARM_IMAGES; index++)
+        if (jolt.kernel->warm[index].key == key) return jolt.kernel->warm[index].used;
+    return 0;
+}

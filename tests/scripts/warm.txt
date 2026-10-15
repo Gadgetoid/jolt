@@ -1,0 +1,8 @@
+echo 'print("hi")' > /tmp/t.py
+time micropython /tmp/t.py
+time micropython /tmp/t.py
+time micropython /tmp/t.py
+time vim --version > /dev/null
+time vim --version > /dev/null
+free | head -2
+exit 0

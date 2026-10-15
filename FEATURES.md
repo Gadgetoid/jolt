@@ -84,6 +84,7 @@
 - BusyBox text aliased from the shared image with VirtualCopy (no copy on fork or exec), batched commit and decommit, AT_RANDOM from a shared entropy pool instead of CryptoAPI per process. About 4x faster `ls` in the emulator (100 ms to 26 ms).
 - App images cached in named shared mappings keyed by path, size and mtime, with text aliased by VirtualCopy while any process uses them. Nested `bash -c :` 3x faster in the emulator. VirtualCopy needs source and destination at the same offset within 64 KB, so the ELF starts at the view base.
 
+- Recently used app images stay loaded after their last process exits: workers hand new image mappings to JoLT-Term, which holds up to 8 (4 MB, least recently used first) and lets them go when free memory drops below 2 MB. Repeat `vim` starts 160 ms to 60 ms in the emulator
 - Drawing through a 16-bit back-buffer canvas: a shadow grid redraws only changed cells, scrolls and history paging move canvas pixels, bitmap glyphs expand through cached 8-pixel tables per colour pair, one blit per paint; output floods drain in 30 ms batches with a paint at most every 33 ms
 
 ### Fixed issues
@@ -121,7 +122,6 @@
 ### Performance and robustness
 
 - Faster fork setup (spare hand-off, about 20 ms)
-- Keep recently used app images warm after their last process exits
 - Workers exit when JoLT-Term dies; a watchdog
 
 ### Possible?

@@ -16,7 +16,6 @@
 #define CACHE_NAME_CAPACITY 48
 #define FNV_OFFSET 2166136261UL
 #define FNV_PRIME 16777619UL
-#define HEX_DIGITS 8
 
 struct cache_header {
     DWORD magic;
@@ -102,15 +101,6 @@ static DWORD cache_key(const WCHAR *path, DWORD size, const FILETIME *written) {
     return hash ? hash : 1;
 }
 
-static void cache_name(WCHAR *name, DWORD key) {
-    static const WCHAR digits[] = L"0123456789abcdef";
-    jolt_object_name(name, L"Jolt-app-", jolt.identifier, -1);
-    size_t length = wcslen(name);
-    name[length++] = L'-';
-    for (int position = HEX_DIGITS - 1; position >= 0; position--) name[length++] = digits[(key >> (position * 4)) & 15];
-    name[length] = 0;
-}
-
 static DWORD header_offset(DWORD size) {
     return (size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
 }
@@ -121,7 +111,7 @@ static struct cache_header *cache_header(BYTE *view, DWORD size) {
 
 static int open_mapping(DWORD key, DWORD mapping_size, struct cached_image *cached, int *existed) {
     WCHAR name[CACHE_NAME_CAPACITY];
-    cache_name(name, key);
+    jolt_image_name(name, key);
     cached->mapping = CreateFileMappingW(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, mapping_size, name);
     if (!cached->mapping) return 0;
     *existed = GetLastError() == ERROR_ALREADY_EXISTS;
@@ -177,6 +167,9 @@ static int load_cached(HANDLE file, const WCHAR *path, struct guest_image *image
     image->key = key;
     image->mapping_size = mapping_size;
     image->shared = 1;
+    jolt_image_touch(key, mapping_size);
+    HWND window = (HWND)jolt.kernel->window;
+    if (!existed && window) SendMessageW(window, JOLT_WARM_MESSAGE, key, mapping_size);
     return 1;
 }
 

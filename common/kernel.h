@@ -3,7 +3,7 @@
 #include "linux.h"
 
 #define JOLT_KERNEL_MAGIC 0x4a4f4c4bUL
-#define JOLT_KERNEL_VERSION 13
+#define JOLT_KERNEL_VERSION 14
 #define JOLT_PROCESSES 16
 #define JOLT_DESCRIPTIONS 48
 #define JOLT_PIPES 12
@@ -25,6 +25,8 @@
 #define JOLT_TTY_MESSAGE (WM_USER + 1)
 #define JOLT_SOUND_MESSAGE (WM_USER + 2)
 #define JOLT_CLIPBOARD_MESSAGE (WM_USER + 3)
+#define JOLT_WARM_MESSAGE (WM_USER + 4)
+#define JOLT_WARM_IMAGES 8
 #define JOLT_MOUNTS 8
 #define JOLT_SERIAL_PORTS 4
 #define JOLT_SERIAL_BUFFER 4096
@@ -153,6 +155,11 @@ struct jolt_tty {
     char input[JOLT_INPUT_SIZE];
 };
 
+struct jolt_warm {
+    DWORD key, size;
+    LONG used;
+};
+
 struct jolt_kernel {
     DWORD magic, version, size;
     DWORD window, launcher, trace;
@@ -170,6 +177,8 @@ struct jolt_kernel {
     char clipboard_commit[JOLT_GUEST_PATH];
     BYTE entropy[JOLT_ENTROPY_SIZE];
     struct jolt_serial serial[JOLT_SERIAL_PORTS];
+    struct jolt_warm warm[JOLT_WARM_IMAGES];
+    LONG warm_clock;
 };
 
 struct jolt_runtime {
@@ -198,6 +207,9 @@ void jolt_description_release(int index);
 int jolt_fd_install(struct jolt_process *process, int minimum, int description, int cloexec);
 void jolt_fd_close(struct jolt_process *process, int fd);
 void jolt_process_exit(int slot, DWORD status);
+void jolt_image_name(WCHAR *name, DWORD key);
+void jolt_image_touch(DWORD key, DWORD size);
+LONG jolt_image_used(DWORD key);
 void jolt_tty_default_settings(struct linux_termios *settings);
 int jolt_tty_open(void);
 DWORD jolt_tty_write(int tty, const char *bytes, DWORD length, int block);

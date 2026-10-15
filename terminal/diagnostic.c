@@ -55,21 +55,18 @@ static int describe(const char *problem, char *text, size_t capacity) {
     system_text(SPI_GETOEMINFO, oem);
     system_text(SPI_GETPLATFORMTYPE, platform);
     return snprintf(text, capacity,
-        "JoLT diagnostic report\r\n\r\n"
-        "Problem: %s\r\n\r\n"
-        "JoLT %s\r\n"
-        "Windows CE %lu.%02lu build %lu\r\n"
-        "Device: %s\r\n"
-        "Platform: %s\r\n"
+        "Problem: %s\r\n"
+        "JoLT %s on Windows CE %lu.%02lu build %lu\r\n"
+        "Device: %s (%s)\r\n"
         "CPU: type %lu, architecture %u, level %u, revision %04x\r\n"
-        "Screen: %dx%d, %d-bit\r\n"
-        "Memory: %lu KB free of %lu KB\r\n"
-        "Missing functions: %s\r\n\r\n"
-        "Please report at " ISSUES_URL " (saved as JoLT\\diagnostic.txt)\r\n",
+        "Memory: %lu KB free of %lu KB, screen %dx%d %d-bit\r\n"
+        "Missing functions: %s\r\n"
+        "Please report at " ISSUES_URL "\r\n"
+        "Saved as JoLT\\diagnostic.txt\r\n",
         problem, JOLT_VERSION, version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber, oem, platform,
         system.dwProcessorType, system.wProcessorArchitecture, system.wProcessorLevel, system.wProcessorRevision,
-        GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), depth, memory.dwAvailPhys / 1024,
-        memory.dwTotalPhys / 1024, missing);
+        memory.dwAvailPhys / 1024, memory.dwTotalPhys / 1024, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
+        depth, missing);
 }
 
 static void report(const char *problem, int show) {

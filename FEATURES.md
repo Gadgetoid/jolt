@@ -85,6 +85,7 @@
 - App images cached in named shared mappings keyed by path, size and mtime, with text aliased by VirtualCopy while any process uses them. Nested `bash -c :` 3x faster in the emulator. VirtualCopy needs source and destination at the same offset within 64 KB, so the ELF starts at the view base.
 
 - Recently used app images stay loaded after their last process exits: workers hand new image mappings to JoLT-Term, which holds up to 8 (4 MB, least recently used first) and lets them go when free memory drops below 2 MB. Repeat `vim` starts 160 ms to 60 ms in the emulator
+- Foreground first: workers outside the active terminal's foreground (the terminal that last got input, plus the console's foreground) drop to THREAD_PRIORITY_BELOW_NORMAL, checked on each syscall
 - Drawing through a 16-bit back-buffer canvas: a shadow grid redraws only changed cells, scrolls and history paging move canvas pixels, bitmap glyphs expand through cached 8-pixel tables per colour pair, one blit per paint; output floods drain in 30 ms batches with a paint at most every 33 ms
 
 ### Fixed issues

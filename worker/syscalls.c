@@ -3,6 +3,7 @@
 #include "worker.h"
 #include "process.h"
 #include "syscalls.h"
+#include "priority.h"
 
 static const syscall_handler handlers[SYS_COUNT] = {
     [SYS_exit] = sys_exit,
@@ -201,6 +202,7 @@ LONG sys_not_permitted(const DWORD *arguments) {
 
 LONG jolt_dispatch(struct jolt_context *context, struct jolt_registers *registers) {
     context->syscall_count++;
+    priority_update();
     DWORD number = registers->values[7];
     DWORD arguments[6];
     memcpy(arguments, registers->values, sizeof arguments);

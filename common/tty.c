@@ -233,12 +233,14 @@ static void process_input(int index, char character) {
 
 void jolt_tty_input(int index, char character) {
     jolt_lock();
+    jolt.kernel->active_tty = index;
     process_input(index, character);
     jolt_unlock();
 }
 
 DWORD jolt_tty_master_write(int index, const char *bytes, DWORD length) {
     jolt_lock();
+    jolt.kernel->active_tty = index;
     for (DWORD position = 0; position < length; position++) process_input(index, bytes[position]);
     jolt_unlock();
     return length;

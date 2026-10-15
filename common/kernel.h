@@ -3,7 +3,7 @@
 #include "linux.h"
 
 #define JOLT_KERNEL_MAGIC 0x4a4f4c4bUL
-#define JOLT_KERNEL_VERSION 14
+#define JOLT_KERNEL_VERSION 15
 #define JOLT_PROCESSES 16
 #define JOLT_DESCRIPTIONS 48
 #define JOLT_PIPES 12
@@ -168,6 +168,7 @@ struct jolt_kernel {
     LONG spare_state, spare_slot;
     DWORD spare_host;
     struct jolt_tty ttys[JOLT_TTYS];
+    LONG active_tty;
     char arguments[JOLT_ARGUMENTS];
     struct jolt_process processes[JOLT_PROCESSES];
     struct jolt_description descriptions[JOLT_DESCRIPTIONS];

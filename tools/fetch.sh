@@ -71,6 +71,11 @@ fetch dejavu-fonts-ttf-2.37.tar.bz2 \
 fetch liberation-fonts-ttf-2.1.5.tar.gz \
     https://github.com/liberationfonts/liberation-fonts/files/7261482/liberation-fonts-ttf-2.1.5.tar.gz \
     7191c669bf38899f73a2094ed00f7b800553364f90e2637010a69c0e268f25d0
+fetch spleen-2.2.0.tar.gz https://github.com/fcambus/spleen/releases/download/2.2.0/spleen-2.2.0.tar.gz \
+    ec42925c6b56d2138c862b2f97147c872e472f674bf03423417d827a08d69a89
+fetch terminus-font-4.49.1.tar.gz \
+    https://downloads.sourceforge.net/project/terminus-font/terminus-font-4.49/terminus-font-4.49.1.tar.gz \
+    d961c1b781627bf417f9b340693d64fc219e0113ad3a3af1a3424c7aa373ef79
 fetch cacert-2026-09-25.pem https://curl.se/ca/cacert-2026-09-25.pem \
     a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505
 zork=https://raw.githubusercontent.com/historicalsource

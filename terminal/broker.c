@@ -228,8 +228,9 @@ void broker_stop(void) {
 
 static void track_host(int slot, const struct jolt_process *process) {
     struct supervised_host *host = &hosts[slot];
-    if (!process->host || host->id == process->host) return;
+    if (host->id == process->host) return;
     release_host(host);
+    if (!process->host) return;
     host->handle = OpenProcess(0, FALSE, process->host);
     host->id = process->host;
 }

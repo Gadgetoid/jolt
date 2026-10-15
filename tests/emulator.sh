@@ -4,7 +4,7 @@ set -euo pipefail
 workspace=$(cd "$(dirname "$0")/.." && pwd)
 emulator=${JORNADA_EMU:-"$workspace/../jornada-72x-emu"}
 state=${JORNADA_STATE:-"$emulator/build/user-latest.state"}
-scripts=${JOLT_SCRIPTS:-"smoke shell interrupt vi spawn display font fullscreen-exit colour jobs apps lua network extras netapps qol desktop vim shortcut launch hold serial apps2 ping bash pty dvtm dvtm-resize serial-shell colour-screen fonts-screen dvtm-screen"}
+scripts=${JOLT_SCRIPTS:-"smoke shell interrupt vi spawn display font fullscreen-exit colour jobs apps lua network extras netapps qol desktop vim shortcut launch hold serial apps2 ping bash pty dvtm dvtm-resize serial-shell bitmap-font subst colour-screen fonts-screen dvtm-screen bitmap-screen"}
 batch_size=${JOLT_BATCH:-4}
 socket="/tmp/jolt-qa-$$.sock"
 serial_port=$((20000 + $$ % 10000))
@@ -108,7 +108,7 @@ cp -R build/dist/stage/JoLT "$stage"
 printf '%s\n' 'Welcome to the JoLT CF root.' > "$stage/root/welcome.txt"
 cp tests/scripts/*.txt "$stage/"
 if [[ -n ${JOLT_TERM_EXE:-} ]]; then cp "$JOLT_TERM_EXE" "$stage/JoLT-Term.exe"; fi
-sh "$emulator/tools/mkcard.sh" "$qa/card.cf" 16 "$stage"
+sh "$emulator/tools/mkcard.sh" "$qa/card.cf" 32 "$stage"
 
 read -r -a names <<< "$scripts"
 for ((first = 0; first < ${#names[@]}; first += batch_size)); do

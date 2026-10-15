@@ -1,0 +1,16 @@
+jolt win
+jolt fonts
+jolt face spleen
+jolt font 8
+stty size
+jolt font 16
+stty size
+printf '\\033]7770;font+\\007' > /dev/console
+stty size
+jolt face terminus
+jolt font 14
+stty size
+jolt face default
+jolt font 16
+stty size
+exit 0

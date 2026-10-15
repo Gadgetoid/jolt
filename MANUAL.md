@@ -124,6 +124,22 @@ jolt face default
 
 Names work with or without spaces, so `jolt face "DejaVu Sans Mono"` does the same. To add a font, copy its regular and bold `.ttf` files into `/usr/share/fonts`, named so they start with the font's name without spaces (`DejaVuSansMono.ttf`, `DejaVuSansMono-Bold.ttf`). Fonts installed in CE's `\Windows\Fonts` work too. JoLT only loads the font you pick, and CE has no anti-aliasing, so well-hinted fonts look best at small sizes. A name that isn't a fixed-width font leaves the current one in place.
 
+### Bitmap fonts
+
+JoLT also draws two pixel fonts itself, Spleen and Terminus. They stay sharp at small sizes, where TrueType fonts break up:
+
+```sh
+jolt face spleen
+jolt font 8
+```
+
+| Font | Sizes (`jolt font`) | Full screen at the smallest size |
+| --- | --- | --- |
+| `spleen` | 8 (5x8), 12, 16, 24 | 127 columns, 30 rows |
+| `terminus` | 12 (6x12), 14, 16, 18, 20, 24 | 106 columns, 20 rows |
+
+Bitmap fonts only come in these sizes. `jolt font N` picks the largest size that isn't bigger than N, and `@font+` and `@font-` step to the next one. Terminus has its own bold; Spleen's bold is drawn one pixel wider. Characters a bitmap font doesn't have are drawn with Courier New.
+
 ## System information
 
 `joltfetch` (or `neofetch`) shows a summary of the device:

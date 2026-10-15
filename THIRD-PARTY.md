@@ -17,6 +17,8 @@ JoLT's own source is MIT licensed (see LICENSE). Release builds include or are b
 | Mbed TLS | 3.6.7 | Apache-2.0 OR GPL-2.0-or-later | TLS for curl |
 | DejaVu Sans Mono | 2.37 | Bitstream Vera licence, changes public domain | `/usr/share/fonts/DejaVuSansMono*.ttf` |
 | Liberation Mono | 2.1.5 | OFL-1.1 | `/usr/share/fonts/LiberationMono*.ttf` |
+| Spleen | 2.2.0 | BSD-2-Clause | `/usr/share/fonts/spleen-*.jbf`, converted from BDF by `tools/bdf2jbf.js` |
+| Terminus | 4.49.1 | OFL-1.1 | `/usr/share/fonts/terminus-*.jbf`, converted from BDF by `tools/bdf2jbf.js` |
 | Mozilla CA certificates (via curl.se) | 2026-09-25 | MPL-2.0 | `/etc/ssl/cert.pem`, trusted roots for curl and links |
 | dvtm | 0.15 | MIT | `/usr/bin/dvtm`, with `apps/dvtm/narrow-curses.patch` |
 | ncurses | 6.6 | X11 (MIT-style) | Terminal library linked into Vim, nano, Bash, ncdu, htop, frotz and dvtm |

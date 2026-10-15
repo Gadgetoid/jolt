@@ -1,0 +1,6 @@
+jolt fs
+jolt face terminus
+jolt font 14
+stty size
+htop
+@wait 6000

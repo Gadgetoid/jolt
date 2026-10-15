@@ -18,7 +18,7 @@ _jolt() {
             face)
                 choices=default
                 local file
-                for file in /usr/share/fonts/*.ttf; do
+                for file in /usr/share/fonts/*.ttf /usr/share/fonts/*.jbf; do
                     file=${file##*/}
                     file=${file%%[-.]*}
                     [[ " $choices " == *" $file "* ]] || choices="$choices $file"

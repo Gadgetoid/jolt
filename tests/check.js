@@ -32,6 +32,8 @@ const expectations = {
     dvtm: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["inside-42", "htop-status-0", "after dvtm 0", "\r\n0\r\n"] },
     "serial-shell": { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["serial shell status 0", "serial-42 /dev/pts/0", "\r\nonlcr\r\n"] },
     "dvtm-resize": { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["20 106"] },
+    "bitmap-font": { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["spleen (bitmap: 8 12 16 24)", "terminus (bitmap: 12 14 16 18 20 24)", "\r\n23 123\r\n", "\r\n11 77\r\n", "\r\n7 51\r\n", "\r\n13 77\r\n"] },
+    subst: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["empty 0 of 60"] },
     pty: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["/dev/pts/0", "pty-hello", "bg-done", "line a", "line b", "after pty interrupt", "\r\n0\r\n", "\r\n/dev/tty\r\n"] },
     launch: { result: ["exit=3 signal=0"], tty: ["\r\nlaunched with args\r\n"] },
     hold: { result: ["JOLT_SHELL PASS exit=0 signal=0"], tty: ["\r\nheld command\r\n", "\r\nin shell after hold\r\n"] },

@@ -11,6 +11,7 @@
 #include "sound.h"
 #include "tty.h"
 #include "fonts.h"
+#include "bitmapfont.h"
 
 #define ORIGIN_X 2
 #define ORIGIN_Y 0
@@ -36,6 +37,7 @@ struct display_state {
     HFONT font, bold_font;
     WCHAR family[LF_FACESIZE];
     int face_missing;
+    struct bitmap_font bitmap;
     int writing;
     char notice[NOTICE_CAPACITY];
     DWORD notice_length;
@@ -145,15 +147,26 @@ static int same_style(const struct styled_cell *first, const struct styled_cell 
         first_foreground == second_foreground && first_background == second_background;
 }
 
+static void draw_bitmap_run(HDC dc, int row, int start, const WCHAR *text, int length, int bold) {
+    for (int offset = 0; offset < length; offset++) {
+        RECT cell = cell_bounds(row, row + 1, start + offset, start + offset + 1);
+        int index = bitmap_font_index(&view.bitmap, text[offset]);
+        if (index >= 0) bitmap_font_draw(dc, &view.bitmap, bold, index, cell.left, cell.top);
+        else ExtTextOutW(dc, cell.left, cell.top, ETO_OPAQUE | ETO_CLIPPED, &cell, &text[offset], 1, NULL);
+    }
+}
+
 static void draw_run(HDC dc, int row, int start, const WCHAR *text, int length, const struct styled_cell *style,
     const INT *advances) {
     COLORREF foreground, background;
     cell_colours(style, &foreground, &background);
-    SelectObject(dc, style->style & STYLE_BOLD ? view.bold_font : view.font);
+    int bold = (style->style & STYLE_BOLD) != 0;
+    SelectObject(dc, bold ? view.bold_font : view.font);
     SetTextColor(dc, foreground);
     SetBkColor(dc, background);
     RECT bounds = cell_bounds(row, row + 1, start, start + length);
-    ExtTextOutW(dc, bounds.left, bounds.top, ETO_OPAQUE | ETO_CLIPPED, &bounds, text, (UINT)length, advances);
+    if (view.bitmap.count) draw_bitmap_run(dc, row, start, text, length, bold);
+    else ExtTextOutW(dc, bounds.left, bounds.top, ETO_OPAQUE | ETO_CLIPPED, &bounds, text, (UINT)length, advances);
     if (!(style->style & STYLE_UNDERLINE)) return;
     HBRUSH brush = CreateSolidBrush(foreground);
     bounds.top = bounds.bottom - UNDERLINE_HEIGHT;
@@ -429,9 +442,9 @@ static int measure_font(HFONT font, int require_fixed, TEXTMETRICW *metrics) {
     return measured && (!require_fixed || !(metrics->tmPitchAndFamily & TMPF_FIXED_PITCH));
 }
 
-static int create_fonts(const WCHAR *family, int require_fixed) {
-    HFONT regular = create_font(view.settings.font_height, FW_NORMAL, family);
-    HFONT bold = create_font(view.settings.font_height, FW_BOLD, family);
+static int create_fonts(const WCHAR *family, int require_fixed, int height) {
+    HFONT regular = create_font(height, FW_NORMAL, family);
+    HFONT bold = create_font(height, FW_BOLD, family);
     TEXTMETRICW metrics;
     if (!regular || !bold || !measure_font(regular, require_fixed, &metrics)) {
         if (regular) DeleteObject(regular);
@@ -455,14 +468,35 @@ static int resolve_face(WCHAR *family) {
     return found;
 }
 
+static int load_bitmap_font(void) {
+    int height = bitmap_font_pick(view.settings.face, view.settings.font_height);
+    struct bitmap_font font;
+    if (!height || !bitmap_font_load(view.settings.face, height, &font)) return 0;
+    if (!create_fonts(FONT_FACE, 0, font.height)) {
+        bitmap_font_free(&font);
+        return 0;
+    }
+    bitmap_font_free(&view.bitmap);
+    view.bitmap = font;
+    view.cell_width = font.width;
+    view.cell_height = font.height;
+    size_t index = 0;
+    for (; view.settings.face[index] && index + 1 < LF_FACESIZE; index++) view.family[index] = (WCHAR)(unsigned char)view.settings.face[index];
+    view.family[index] = 0;
+    return 1;
+}
+
 static void load_fonts(void) {
     WCHAR family[LF_FACESIZE];
     view.face_missing = 0;
     if (view.settings.face[0]) {
-        if (resolve_face(family) && create_fonts(family, 1)) return;
+        if (load_bitmap_font()) return;
+        bitmap_font_free(&view.bitmap);
+        if (resolve_face(family) && create_fonts(family, 1, view.settings.font_height)) return;
         view.face_missing = 1;
     }
-    create_fonts(FONT_FACE, 0);
+    bitmap_font_free(&view.bitmap);
+    create_fonts(FONT_FACE, 0, view.settings.font_height);
 }
 
 static void vterm_colour(VTermColor *colour, COLORREF value) {
@@ -584,6 +618,7 @@ void display_destroy(void) {
     if (view.foreground_brush) DeleteObject(view.foreground_brush);
     if (view.background_brush) DeleteObject(view.background_brush);
     if (view.terminal) vterm_free(view.terminal);
+    bitmap_font_free(&view.bitmap);
     fonts_release();
     scrollback_free();
     memset(&view, 0, sizeof view);

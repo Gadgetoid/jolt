@@ -7,7 +7,7 @@ usage() {
     echo "  lm    light mode"
     echo "  font N  font height in pixels, 8-32 (default 16)"
     echo "  face NAME|default  fixed-width font, see jolt fonts (default Courier New)"
-    echo "  fonts  list the fonts in /usr/share/fonts"
+    echo "  fonts  list the fonts in /usr/share/fonts, bitmap ones with their sizes"
     echo "  theme classic|solarized  colour theme"
     echo "  mount [CEPATH DIR]  map a CE folder into the tree, or list mounts"
     echo "  umount DIR  remove a mount"
@@ -77,6 +77,14 @@ case "$1" in
             name=${file##*/}
             echo "${name%%[-.]*}"
         done | sort -u
+        for face in $(for file in /usr/share/fonts/*.jbf; do [ -f "$file" ] && name=${file##*/} && echo "${name%%-*}"; done | sort -u); do
+            sizes=$(for file in /usr/share/fonts/$face-*.jbf; do
+                name=${file##*/}
+                name=${name#$face-}
+                case $name in *-bold.jbf) ;; *) echo "${name%.jbf}" ;; esac
+            done | sort -n | tr '\n' ' ')
+            echo "$face (bitmap: ${sizes% })"
+        done
         ;;
     theme)
         case "$2" in

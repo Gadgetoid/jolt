@@ -6,6 +6,7 @@
 #include "session.h"
 #include "keyboard.h"
 #include "hotkeys.h"
+#include "bitmapfont.h"
 
 #define SETTINGS_FILE L"jolt.cfg"
 #define SETTINGS_CAPACITY 256
@@ -90,6 +91,13 @@ void settings_load(struct display_settings *settings) {
 }
 
 static int step_font(int step) {
+    int heights[BITMAP_FONT_HEIGHTS];
+    if (current.face[0] && bitmap_font_heights(current.face, heights)) {
+        int next = bitmap_font_step(current.face, current.font_height, step > 0 ? 1 : -1);
+        if (!next) return 0;
+        current.font_height = next;
+        return 1;
+    }
     if (!valid_font(current.font_height + step)) return 0;
     current.font_height += step;
     return 1;

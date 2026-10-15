@@ -56,6 +56,7 @@
 
 - Colour and bold rendering, classic and Solarized themes, light and dark
 - Font choice: TrueType from /usr/share/fonts via AddFontResource (DejaVu Sans Mono, Liberation Mono) or CE fonts by name
+- Bitmap fonts drawn by JoLT: Spleen (5x8 to 12x24) and Terminus (6x12 to 12x24), BDF converted at build time to 1-bit glyph sheets (.jbf), one BitBlt per cell, Courier New for missing glyphs
 - Ctrl+Shift+F toggles full screen
 - ncurses with built-in terminfo fallbacks, TERM=xterm-256color
 - ptys: /dev/ptmx and /dev/pts/0-3; line discipline shared by the console and ptys (common/tty.c); controlling terminals, TIOCSCTTY, hangup on master close; /proc/PID/fd links
@@ -88,6 +89,7 @@
 - Vim: deleting did not remove characters, other display quirks (TERM=xterm-256color, keys encoded by libvterm, terminal query replies)
 - Trailing slash was dropped in path lookup, so `file/` resolved as `file`
 - dvtm missed resizes (pselect ignored its signal mask)
+- Command substitutions with pipelines (`$(echo a | cat)`) sometimes came back empty: the supervisor kept a stale handle when a process slot was reused, saw the old worker's exit and closed the new process's files
 
 ## Wishlist
 
@@ -102,7 +104,6 @@
 
 ### Terminal
 
-- Bitmap fonts drawn by JoLT (Spleen, Terminus) for sharper small sizes
 - Windows key: Win+key shortcuts, a second bank of hot keys, or an on-screen overlay (memory, programs, theme, font)
 - More than one JoLT window at a time (single-instance guard today; a second launch focuses the first)
 

@@ -1,0 +1,7 @@
+jolt fs
+jolt face spleen
+jolt font 8
+for i in $(seq 1 40); do echo "line $i of the scroll test"; done
+time ls -l /usr/bin
+echo done
+printf 'abc\\033[3D\\033[2@XY\\n'

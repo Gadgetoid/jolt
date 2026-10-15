@@ -38,11 +38,14 @@ struct display_state {
     WCHAR family[LF_FACESIZE];
     int face_missing;
     struct bitmap_font bitmap;
+    struct pixel_row row;
     int writing;
     char notice[NOTICE_CAPACITY];
     DWORD notice_length;
     int cell_width, cell_height;
     int cursor_visible;
+    int cursor_drawn;
+    VTermPos cursor_cell;
     int scroll;
     int shown_count, shown_rows, shown_scroll;
     struct display_settings settings;
@@ -76,6 +79,15 @@ static void invalidate_cell(int row, int column) {
 
 static void invalidate_all(void) {
     InvalidateRect(view.window, NULL, FALSE);
+}
+
+static void scroll_pixels(RECT area, int rightward, int downward) {
+    RECT pending;
+    int has_pending = GetUpdateRect(view.window, &pending, FALSE);
+    ScrollWindowEx(view.window, rightward, downward, &area, &area, NULL, NULL, SW_INVALIDATE);
+    if (!has_pending) return;
+    OffsetRect(&pending, rightward, downward);
+    InvalidateRect(view.window, &pending, FALSE);
 }
 
 static COLORREF colour_of(const VTermColor *colour) {
@@ -147,15 +159,6 @@ static int same_style(const struct styled_cell *first, const struct styled_cell 
         first_foreground == second_foreground && first_background == second_background;
 }
 
-static void draw_bitmap_run(HDC dc, int row, int start, const WCHAR *text, int length, int bold) {
-    for (int offset = 0; offset < length; offset++) {
-        RECT cell = cell_bounds(row, row + 1, start + offset, start + offset + 1);
-        int index = bitmap_font_index(&view.bitmap, text[offset]);
-        if (index >= 0) bitmap_font_draw(dc, &view.bitmap, bold, index, cell.left, cell.top);
-        else ExtTextOutW(dc, cell.left, cell.top, ETO_OPAQUE | ETO_CLIPPED, &cell, &text[offset], 1, NULL);
-    }
-}
-
 static void draw_run(HDC dc, int row, int start, const WCHAR *text, int length, const struct styled_cell *style,
     const INT *advances) {
     COLORREF foreground, background;
@@ -165,8 +168,7 @@ static void draw_run(HDC dc, int row, int start, const WCHAR *text, int length, 
     SetTextColor(dc, foreground);
     SetBkColor(dc, background);
     RECT bounds = cell_bounds(row, row + 1, start, start + length);
-    if (view.bitmap.count) draw_bitmap_run(dc, row, start, text, length, bold);
-    else ExtTextOutW(dc, bounds.left, bounds.top, ETO_OPAQUE | ETO_CLIPPED, &bounds, text, (UINT)length, advances);
+    ExtTextOutW(dc, bounds.left, bounds.top, ETO_OPAQUE | ETO_CLIPPED, &bounds, text, (UINT)length, advances);
     if (!(style->style & STYLE_UNDERLINE)) return;
     HBRUSH brush = CreateSolidBrush(foreground);
     bounds.top = bounds.bottom - UNDERLINE_HEIGHT;
@@ -174,7 +176,34 @@ static void draw_run(HDC dc, int row, int start, const WCHAR *text, int length, 
     DeleteObject(brush);
 }
 
+static void paint_bitmap_row(HDC dc, int row, int first_column, int last_column) {
+    struct styled_cell cell;
+    int fallback[COLUMN_LIMIT], fallback_count = 0;
+    int columns = last_column - first_column;
+    if (columns * view.cell_width > view.row.width) columns = view.row.width / view.cell_width;
+    for (int offset = 0; offset < columns; offset++) {
+        view_cell(row, first_column + offset, &cell);
+        COLORREF foreground, background;
+        cell_colours(&cell, &foreground, &background);
+        int index = bitmap_font_index(&view.bitmap, cell.character);
+        if (index < 0 && cell.character > L' ') fallback[fallback_count++] = first_column + offset;
+        pixel_row_glyph(&view.row, &view.bitmap, offset * view.cell_width, index, (cell.style & STYLE_BOLD) != 0,
+            pixel_colour(foreground), pixel_colour(background), (cell.style & STYLE_UNDERLINE) != 0);
+    }
+    RECT bounds = cell_bounds(row, row + 1, first_column, first_column + columns);
+    BitBlt(dc, bounds.left, bounds.top, bounds.right - bounds.left, view.cell_height, view.row.dc, 0, 0, SRCCOPY);
+    INT advance = view.cell_width;
+    for (int index = 0; index < fallback_count; index++) {
+        view_cell(row, fallback[index], &cell);
+        draw_run(dc, row, fallback[index], &cell.character, 1, &cell, &advance);
+    }
+}
+
 static void paint_row(HDC dc, int row, int first_column, int last_column, const INT *advances) {
+    if (view.bitmap.count && view.row.dc) {
+        paint_bitmap_row(dc, row, first_column, last_column);
+        return;
+    }
     WCHAR text[RUN_LIMIT];
     struct styled_cell run_style, cell;
     int run_start = first_column, run_length = 0;
@@ -200,6 +229,8 @@ static void paint_cursor(HDC dc) {
     RECT bounds = cell_bounds(cursor.row, cursor.row + 1, cursor.col, cursor.col + 1);
     bounds.top = bounds.bottom - CURSOR_HEIGHT;
     FillRect(dc, &bounds, view.foreground_brush);
+    view.cursor_drawn = 1;
+    view.cursor_cell = cursor;
 }
 
 static void paint_cells(HDC dc, const RECT *area) {
@@ -269,8 +300,19 @@ void display_scroll_to(int lines_back) {
     if (lines_back < 0) lines_back = 0;
     if (lines_back > scrollback_count()) lines_back = scrollback_count();
     if (lines_back == view.scroll) return;
+    int moved = lines_back - view.scroll, rows = console()->rows;
     view.scroll = lines_back;
-    invalidate_all();
+    if (view.splash || moved >= rows || -moved >= rows) {
+        invalidate_all();
+    } else {
+        scroll_pixels(cell_bounds(0, rows, 0, console()->columns), 0, moved * view.cell_height);
+        if (view.cursor_drawn) invalidate_cell(view.cursor_cell.row + moved, view.cursor_cell.col);
+        if (!lines_back) {
+            VTermPos cursor;
+            vterm_state_get_cursorpos(vterm_obtain_state(view.terminal), &cursor);
+            invalidate_cell(cursor.row, cursor.col);
+        }
+    }
     update_scrollbar();
 }
 
@@ -304,6 +346,35 @@ static int on_damage(VTermRect rect, void *user) {
     }
     RECT bounds = cell_bounds(rect.start_row, rect.end_row, rect.start_col, rect.end_col);
     InvalidateRect(view.window, &bounds, FALSE);
+    return 1;
+}
+
+static int smaller(int first, int second) {
+    return first < second ? first : second;
+}
+
+static int larger(int first, int second) {
+    return first > second ? first : second;
+}
+
+static int inside(VTermPos position, VTermRect rect) {
+    return position.row >= rect.start_row && position.row < rect.end_row &&
+        position.col >= rect.start_col && position.col < rect.end_col;
+}
+
+static int on_move_rect(VTermRect destination, VTermRect source, void *user) {
+    (void)user;
+    if (view.scroll || view.splash) return 0;
+    if (destination.start_row != source.start_row && destination.start_col != source.start_col) return 0;
+    RECT area = cell_bounds(smaller(source.start_row, destination.start_row), larger(source.end_row, destination.end_row),
+        smaller(source.start_col, destination.start_col), larger(source.end_col, destination.end_col));
+    int rightward = (destination.start_col - source.start_col) * view.cell_width;
+    int downward = (destination.start_row - source.start_row) * view.cell_height;
+    scroll_pixels(area, rightward, downward);
+    if (view.cursor_drawn && inside(view.cursor_cell, source)) {
+        invalidate_cell(view.cursor_cell.row + destination.start_row - source.start_row,
+            view.cursor_cell.col + destination.start_col - source.start_col);
+    }
     return 1;
 }
 
@@ -369,6 +440,7 @@ static void on_terminal_output(const char *bytes, size_t length, void *user) {
 
 static const VTermScreenCallbacks screen_callbacks = {
     .damage = on_damage,
+    .moverect = on_move_rect,
     .movecursor = on_cursor,
     .settermprop = on_property,
     .bell = on_bell,
@@ -476,8 +548,15 @@ static int load_bitmap_font(void) {
         bitmap_font_free(&font);
         return 0;
     }
+    struct pixel_row row;
+    if (!pixel_row_create(&row, GetSystemMetrics(SM_CXSCREEN) + font.width, font.height)) {
+        bitmap_font_free(&font);
+        return 0;
+    }
     bitmap_font_free(&view.bitmap);
+    pixel_row_free(&view.row);
     view.bitmap = font;
+    view.row = row;
     view.cell_width = font.width;
     view.cell_height = font.height;
     size_t index = 0;
@@ -492,10 +571,12 @@ static void load_fonts(void) {
     if (view.settings.face[0]) {
         if (load_bitmap_font()) return;
         bitmap_font_free(&view.bitmap);
+        pixel_row_free(&view.row);
         if (resolve_face(family) && create_fonts(family, 1, view.settings.font_height)) return;
         view.face_missing = 1;
     }
     bitmap_font_free(&view.bitmap);
+    pixel_row_free(&view.row);
     create_fonts(FONT_FACE, 0, view.settings.font_height);
 }
 
@@ -603,7 +684,7 @@ int display_create(HWND window, const struct display_settings *settings, display
     view.screen = vterm_obtain_screen(view.terminal);
     vterm_screen_set_callbacks(view.screen, &screen_callbacks, NULL);
     vterm_screen_set_unrecognised_fallbacks(view.screen, &state_fallbacks, NULL);
-    vterm_screen_set_damage_merge(view.screen, VTERM_DAMAGE_SCREEN);
+    vterm_screen_set_damage_merge(view.screen, VTERM_DAMAGE_SCROLL);
     vterm_screen_enable_altscreen(view.screen, 1);
     apply_theme();
     vterm_screen_reset(view.screen, 1);
@@ -619,6 +700,7 @@ void display_destroy(void) {
     if (view.background_brush) DeleteObject(view.background_brush);
     if (view.terminal) vterm_free(view.terminal);
     bitmap_font_free(&view.bitmap);
+    pixel_row_free(&view.row);
     fonts_release();
     scrollback_free();
     memset(&view, 0, sizeof view);

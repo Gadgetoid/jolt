@@ -25,6 +25,62 @@ usage() {
     echo "Settings are remembered. Type 'exit' to close JoLT."
 }
 
+command_usage() {
+    echo "usage: jolt $1"
+    shift
+    for line in "$@"; do echo "  $line"; done
+}
+
+fail_usage() {
+    command_usage "$@" >&2
+    exit 1
+}
+
+sort_numbers() {
+    sorted=
+    for number in "$@"; do
+        placed=
+        result=
+        for existing in $sorted; do
+            if [ -z "$placed" ] && [ "$number" -lt "$existing" ]; then
+                result="$result $number"
+                placed=1
+            fi
+            result="$result $existing"
+        done
+        [ -z "$placed" ] && result="$result $number"
+        sorted=$result
+    done
+}
+
+list_fonts() {
+    indent=$1
+    echo "${indent}Courier New (built in, default)"
+    seen=" "
+    for file in /usr/share/fonts/*.ttf /usr/share/fonts/*.jbf; do
+        [ -f "$file" ] || continue
+        name=${file##*/}
+        face=${name%%[-.]*}
+        case "$seen" in *" $face "*) continue ;; esac
+        seen="$seen$face "
+        case "$name" in
+            *.ttf) echo "$indent$face" ;;
+            *)
+                sizes=
+                for path in /usr/share/fonts/"$face"-*.jbf; do
+                    size=${path##*/}
+                    size=${size#"$face"-}
+                    size=${size%.jbf}
+                    case "$size" in ''|*[!0-9]*) continue ;; esac
+                    sizes="$sizes $size"
+                done
+                sort_numbers $sizes
+                echo "$indent$face (bitmap:$sorted)"
+                ;;
+        esac
+    done
+}
+
 list_mounts() {
     while read -r source target type rest; do
         [ "$type" = cefs ] && printf '%s on %s\n' "$(printf '%b' "$source")" "$target"
@@ -60,49 +116,43 @@ case "$1" in
     dm|dark) osc dark ;;
     lm|light) osc light ;;
     font)
+        font_help="N is the font height in pixels, 8 to 32 (default 16)"
+        bitmap_help="bitmap fonts come in fixed sizes, see jolt fonts"
         case "$2" in
-            ''|*[!0-9]*) usage >&2; exit 1 ;;
+            ''|*[!0-9]*) fail_usage "font N" "$font_help" "$bitmap_help" ;;
         esac
-        if [ "$2" -lt 8 ] || [ "$2" -gt 32 ]; then usage >&2; exit 1; fi
+        if [ "$2" -lt 8 ] || [ "$2" -gt 32 ]; then fail_usage "font N" "$font_help" "$bitmap_help"; fi
         osc "font=$2"
         ;;
     face)
-        if [ $# -ne 2 ] || [ -z "$2" ] || [ ${#2} -gt 31 ]; then usage >&2; exit 1; fi
+        if [ $# -ne 2 ] || [ -z "$2" ] || [ ${#2} -gt 31 ]; then
+            {
+                command_usage "face NAME|default" "NAME is one of these fonts, default is Courier New:"
+                list_fonts "    "
+            } >&2
+            exit 1
+        fi
         osc "face=$2"
         ;;
-    fonts)
-        echo "Courier New (built in, default)"
-        for file in /usr/share/fonts/*.ttf; do
-            [ -f "$file" ] || continue
-            name=${file##*/}
-            echo "${name%%[-.]*}"
-        done | sort -u
-        for face in $(for file in /usr/share/fonts/*.jbf; do [ -f "$file" ] && name=${file##*/} && echo "${name%%-*}"; done | sort -u); do
-            sizes=$(for file in /usr/share/fonts/$face-*.jbf; do
-                name=${file##*/}
-                name=${name#$face-}
-                case $name in *-bold.jbf) ;; *) echo "${name%.jbf}" ;; esac
-            done | sort -n | tr '\n' ' ')
-            echo "$face (bitmap: ${sizes% })"
-        done
-        ;;
+    fonts) list_fonts ;;
     theme)
         case "$2" in
             classic|solarized) osc "theme=$2" ;;
-            *) usage >&2; exit 1 ;;
+            *) fail_usage "theme classic|solarized" "colour theme; jolt dm and jolt lm switch dark and light" ;;
         esac
         ;;
     mount)
         if [ $# -eq 1 ]; then list_mounts; exit 0; fi
-        if [ $# -ne 3 ]; then usage >&2; exit 1; fi
+        if [ $# -ne 3 ]; then fail_usage "mount [CEPATH DIR]" "map a CE folder at DIR, e.g. jolt mount '\\Storage Card\\Photos' /mnt/photos" "with no arguments, list the mounts"; fi
         mkdir -p "$3" && mount -t cefs "$2" "$3"
         ;;
     umount|unmount)
-        if [ $# -ne 2 ]; then usage >&2; exit 1; fi
+        if [ $# -ne 2 ]; then fail_usage "umount DIR" "remove the mount at DIR, see jolt mount"; fi
         umount "$2"
         ;;
     open)
-        if [ $# -ne 2 ] || [ ! -e "$2" ]; then usage >&2; exit 1; fi
+        if [ $# -ne 2 ]; then fail_usage "open FILE" "open FILE with its CE application, e.g. jolt open letter.pwd"; fi
+        if [ ! -e "$2" ]; then echo "jolt: $2: no such file" >&2; exit 1; fi
         osc "open=$(realpath "$2")"
         ;;
     battery) battery ;;
@@ -116,13 +166,13 @@ case "$1" in
     hotkeys)
         case "$2" in
             off|fullscreen|always) osc "hotkeys=$2" ;;
-            *) usage >&2; exit 1 ;;
+            *) fail_usage "hotkeys off|fullscreen|always" "when the HP hot keys run the commands in /etc/hotkeys" ;;
         esac
         ;;
     shortcut)
         place=d
         if [ "$2" = "-s" ]; then place=s; shift; fi
-        if [ $# -ne 3 ]; then usage >&2; exit 1; fi
+        if [ $# -ne 3 ]; then fail_usage "shortcut [-s] NAME COMMAND" "desktop shortcut that opens JoLT and runs COMMAND (-s: Start menu)" "e.g. jolt shortcut Laptop 'ssh user@192.168.1.10'"; fi
         case "$2" in
             ''|*[\\/:*?\"\<\>\|\;]*) echo "jolt: shortcut names cannot contain \\ / : * ? \" < > | ;" >&2; exit 1 ;;
         esac

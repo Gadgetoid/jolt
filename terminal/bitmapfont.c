@@ -12,6 +12,9 @@
 #define HEADER_SIZE 16
 #define FACE_CAPACITY 32
 #define FILE_LIMIT (256 * 1024)
+#define RED_MASK 0xf800
+#define GREEN_MASK 0x07e0
+#define BLUE_MASK 0x001f
 
 struct font_header {
     char magic[4];
@@ -111,7 +114,8 @@ static int load_atlas(const WCHAR *path, struct bitmap_font *font, int slot) {
     struct font_header header;
     memcpy(&header, data, sizeof header);
     DWORD rows = (header.count + header.columns - 1) / header.columns * header.height;
-    DWORD needed = HEADER_SIZE + header.count * sizeof(DWORD) + rows * header.stride;
+    DWORD bits_size = rows * header.stride;
+    DWORD needed = HEADER_SIZE + header.count * sizeof(DWORD) + bits_size;
     int valid = !memcmp(header.magic, MAGIC, sizeof header.magic) && header.columns && header.width && header.height &&
         header.stride == (header.columns * header.width + 15) / 16 * 2 && needed <= size;
     if (valid && slot == 0) {
@@ -119,35 +123,26 @@ static int load_atlas(const WCHAR *path, struct bitmap_font *font, int slot) {
         font->height = header.height;
         font->columns = header.columns;
         font->count = (int)header.count;
+        font->stride = header.stride;
         font->codepoints = LocalAlloc(LMEM_FIXED, header.count * sizeof(DWORD));
         if (font->codepoints) memcpy(font->codepoints, data + HEADER_SIZE, header.count * sizeof(DWORD));
         else valid = 0;
     } else if (valid) {
         valid = font->width == header.width && font->height == header.height && font->count == (int)header.count &&
-            font->columns == header.columns;
+            font->columns == header.columns && font->stride == header.stride;
     }
     if (valid) {
-        const BYTE *bits = data + HEADER_SIZE + header.count * sizeof(DWORD);
-        font->atlas[slot] = CreateBitmap(header.columns * header.width, (int)rows, 1, 1, bits);
-        font->dc[slot] = CreateCompatibleDC(NULL);
-        valid = font->atlas[slot] && font->dc[slot];
-        if (valid) SelectObject(font->dc[slot], font->atlas[slot]);
-    }
-    if (!valid && slot) {
-        if (font->dc[slot]) DeleteDC(font->dc[slot]);
-        if (font->atlas[slot]) DeleteObject(font->atlas[slot]);
-        font->dc[slot] = NULL;
-        font->atlas[slot] = NULL;
+        font->bits[slot] = LocalAlloc(LMEM_FIXED, bits_size);
+        if (font->bits[slot]) memcpy(font->bits[slot], data + HEADER_SIZE + header.count * sizeof(DWORD), bits_size);
+        else valid = 0;
     }
     LocalFree(data);
     return valid;
 }
 
 void bitmap_font_free(struct bitmap_font *font) {
-    for (int slot = 0; slot < 2; slot++) {
-        if (font->dc[slot]) DeleteDC(font->dc[slot]);
-        if (font->atlas[slot]) DeleteObject(font->atlas[slot]);
-    }
+    for (int slot = 0; slot < 2; slot++)
+        if (font->bits[slot]) LocalFree(font->bits[slot]);
     if (font->codepoints) LocalFree(font->codepoints);
     memset(font, 0, sizeof *font);
 }
@@ -178,8 +173,60 @@ int bitmap_font_index(const struct bitmap_font *font, WCHAR character) {
     return -1;
 }
 
-void bitmap_font_draw(HDC dc, const struct bitmap_font *font, int bold, int index, int x, int y) {
-    HDC source = bold && font->dc[1] ? font->dc[1] : font->dc[0];
-    BitBlt(dc, x, y, font->width, font->height, source, (index % font->columns) * font->width,
-        (index / font->columns) * font->height, SRCCOPY);
+int pixel_row_create(struct pixel_row *row, int width, int height) {
+    struct {
+        BITMAPINFOHEADER header;
+        DWORD masks[3];
+    } info;
+    memset(row, 0, sizeof *row);
+    memset(&info, 0, sizeof info);
+    info.header.biSize = sizeof info.header;
+    info.header.biWidth = width;
+    info.header.biHeight = -height;
+    info.header.biPlanes = 1;
+    info.header.biBitCount = 16;
+    info.header.biCompression = BI_BITFIELDS;
+    info.masks[0] = RED_MASK;
+    info.masks[1] = GREEN_MASK;
+    info.masks[2] = BLUE_MASK;
+    void *pixels = NULL;
+    row->bitmap = CreateDIBSection(NULL, (BITMAPINFO *)&info, DIB_RGB_COLORS, &pixels, NULL, 0);
+    row->dc = row->bitmap ? CreateCompatibleDC(NULL) : NULL;
+    if (!row->bitmap || !row->dc || !pixels) {
+        pixel_row_free(row);
+        return 0;
+    }
+    SelectObject(row->dc, row->bitmap);
+    row->pixels = pixels;
+    row->width = width;
+    row->height = height;
+    row->pitch = (width * 2 + 3) / 4 * 2;
+    return 1;
+}
+
+void pixel_row_free(struct pixel_row *row) {
+    if (row->dc) DeleteDC(row->dc);
+    if (row->bitmap) DeleteObject(row->bitmap);
+    memset(row, 0, sizeof *row);
+}
+
+WORD pixel_colour(COLORREF colour) {
+    return (WORD)(((GetRValue(colour) >> 3) << 11) | ((GetGValue(colour) >> 2) << 5) | (GetBValue(colour) >> 3));
+}
+
+void pixel_row_glyph(struct pixel_row *row, const struct bitmap_font *font, int x, int index, int bold, WORD foreground,
+    WORD background, int underline) {
+    const BYTE *bits = bold && font->bits[1] ? font->bits[1] : font->bits[0];
+    int left = index >= 0 ? (index % font->columns) * font->width : 0;
+    int top = index >= 0 ? (index / font->columns) * font->height : 0;
+    for (int y = 0; y < font->height && y < row->height; y++) {
+        WORD *target = row->pixels + y * row->pitch + x;
+        const BYTE *source = bits + (top + y) * font->stride;
+        int line = underline && y == font->height - 1;
+        for (int column = 0; column < font->width && x + column < row->width; column++) {
+            int bit = left + column;
+            int ink = index >= 0 && !(source[bit >> 3] & (0x80 >> (bit & 7)));
+            target[column] = ink || line ? foreground : background;
+        }
+    }
 }

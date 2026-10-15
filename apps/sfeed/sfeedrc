@@ -1,0 +1,8 @@
+maxjobs=2
+
+feeds() {
+	feed "codemadness" "https://www.codemadness.org/atom_content.xml"
+	feed "hackaday" "https://hackaday.com/blog/feed/" "https://hackaday.com"
+	feed "jolt releases" "https://github.com/Gadgetoid/jolt/releases.atom"
+	feed "xkcd" "https://xkcd.com/atom.xml" "https://xkcd.com"
+}

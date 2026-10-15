@@ -1,0 +1,12 @@
+mkdir -p /tmp/www /tmp/feeds && printf '%s' '<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><title>Local</title><entry><title>JoLT feed entry</title><link href="http://127.0.0.1:8082/one"/><id>one</id><updated>2026-10-15T12:00:00Z</updated><content type="html">&lt;p&gt;Feed body&lt;/p&gt;</content></entry></feed>' > /tmp/www/atom.xml
+httpd -p 8082 -h /tmp/www
+sleep 1
+printf '%s\n' 'sfeedpath=/tmp/feeds' 'feeds() {' '	feed local http://127.0.0.1:8082/atom.xml' '	feed other http://127.0.0.1:8082/atom.xml' '}' > /tmp/sfeedrc
+sfeed_update /tmp/sfeedrc; echo update $?
+sfeed_plain /tmp/feeds/local
+sfeed_content /tmp/feeds/local | cat
+echo piped | awk '{ print | "cat" }'
+lua -e 'os.execute("echo executed")'
+lua -e 'print(io.popen("echo popened"):read())'
+killall httpd; echo done
+exit 0

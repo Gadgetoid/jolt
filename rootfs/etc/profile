@@ -4,6 +4,8 @@ export PS1='\w \$ '
 export EDITOR=vi
 export PAGER=less
 export LESS=-R
+export SFEED_PLUMBER=links SFEED_PLUMBER_INTERACTIVE=1 SFEED_HTMLCONV=sfeed_htmlconv
+export SFEED_YANKER='cat > /dev/clipboard'
 umask 022
 mount -a 2>/dev/null
 [ -r /etc/motd ] && cat /etc/motd

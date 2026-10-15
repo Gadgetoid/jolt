@@ -313,6 +313,7 @@ These live in `/usr/bin`:
 | `jq` | JSON processor |
 | `htop` | Process viewer (Ctrl+0 quits) |
 | `dvtm` | Several shells in one screen, see [Windows with dvtm](#windows-with-dvtm) |
+| `sfeed_curses` | RSS and Atom reader, see [Reading feeds with sfeed](#reading-feeds-with-sfeed) |
 | `ncdu` | Disk usage browser, needs more than 15 rows: use `jolt font 12` |
 | `frotz` | Z-machine interpreter for text adventures |
 | `zork` | Zork I, II or III: `zork 2` |
@@ -323,6 +324,22 @@ These live in `/usr/bin`:
 | --- | --- |
 | ![vim](docs/manual/vim.png) | ![links](docs/manual/links.png) |
 | ![MicroPython](docs/manual/micropython.png) | ![Zork](docs/manual/zork.png) |
+
+## Reading feeds with sfeed
+
+sfeed fetches RSS and Atom feeds with `curl` and keeps them as text files in `~/.sfeed/feeds`. Start from the example list:
+
+```sh
+mkdir -p ~/.sfeed
+cp /usr/share/sfeed/sfeedrc.example ~/.sfeed/sfeedrc
+vi ~/.sfeed/sfeedrc
+sfeed_update
+sfeed_curses ~/.sfeed/feeds/*
+```
+
+Each `feed` line in `sfeedrc` is a name and a URL. `maxjobs=2` fetches two feeds at a time; more uses more memory. `sfeed_opml_import < feeds.opml` turns another reader's export into `feed` lines. Run `sfeed_update` whenever you want new items.
+
+In `sfeed_curses`, `j` and `k` move, Tab switches between feeds and items, and Enter opens a feed. On an item, Enter opens it in `links`, `c` shows its text in `less`, and `y` copies its URL to the CE clipboard. `q` quits. `sfeed_plain ~/.sfeed/feeds/*` prints everything as a list instead.
 
 ## Windows with dvtm
 

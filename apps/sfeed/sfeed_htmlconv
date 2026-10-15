@@ -1,0 +1,5 @@
+#!/bin/sh
+page=/tmp/sfeed_htmlconv.$$.html
+cat > "$page"
+links -dump "$page"
+rm -f "$page"

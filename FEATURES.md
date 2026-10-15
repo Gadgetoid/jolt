@@ -34,6 +34,9 @@
 - Vim 9.2 tiny over ncurses 6.6
 - MicroPython 1.29 UNIX port (no threads, FFI or SSL)
 - dvtm 0.15 (narrow ncurses; dvtm and dvtm-256color terminfo built into the ncurses fallbacks)
+- sfeed 2.4 with sfeed_curses; articles through links, `y` copies to /dev/clipboard
+- popen, system and posix_spawn (musl's __clone forks for CLONE_VFORK)
+- BusyBox xargs -P
 
 ### Serial
 

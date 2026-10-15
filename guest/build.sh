@@ -20,9 +20,10 @@ busybox="$build/src/busybox-1.38.0"
 patch -d "$musl" -p1 < "$guest/musl/musl-armv4.patch"
 cp "$guest/musl/syscall_arch.h" "$guest/musl/pthread_arch.h" "$guest/musl/atomic_arch.h" "$musl/arch/arm/"
 cp "$guest/musl/set-thread-area.c" "$musl/src/thread/arm/__set_thread_area.c"
+cp "$guest/musl/clone.c" "$musl/src/thread/arm/clone.c"
 cp "$guest/musl/read-tp.S" "$musl/src/thread/arm/__aeabi_read_tp.s"
 cp "$guest/musl/restore.s" "$musl/src/signal/arm/restore.s"
-rm -f "$musl/src/process/arm/vfork.s"
+rm -f "$musl/src/process/arm/vfork.s" "$musl/src/thread/arm/clone.s"
 
 flags="--target=arm-linux-gnueabi -march=armv4 -marm -mfloat-abi=soft -fno-unwind-tables -fno-asynchronous-unwind-tables"
 (
@@ -30,7 +31,7 @@ flags="--target=arm-linux-gnueabi -march=armv4 -marm -mfloat-abi=soft -fno-unwin
     CC="$llvm/bin/clang $flags" AR="$llvm/bin/llvm-ar" RANLIB="$llvm/bin/llvm-ranlib" \
         "$musl/configure" --target=arm-linux-gnueabi --disable-shared --prefix="$build/sysroot" \
         CFLAGS="-Os -ffunction-sections -fdata-sections" LIBCC=""
-    "$make_tool" -j"$jobs" ARCH_SRCS="$musl/src/thread/arm/__set_thread_area.c $musl/src/signal/arm/restore.s $musl/src/signal/arm/sigsetjmp.s" \
+    "$make_tool" -j"$jobs" ARCH_SRCS="$musl/src/thread/arm/__set_thread_area.c $musl/src/thread/arm/clone.c $musl/src/signal/arm/restore.s $musl/src/signal/arm/sigsetjmp.s" \
         lib/libc.a lib/libm.a install-headers
 )
 

@@ -76,6 +76,8 @@ fetch spleen-2.2.0.tar.gz https://github.com/fcambus/spleen/releases/download/2.
 fetch terminus-font-4.49.1.tar.gz \
     https://downloads.sourceforge.net/project/terminus-font/terminus-font-4.49/terminus-font-4.49.1.tar.gz \
     d961c1b781627bf417f9b340693d64fc219e0113ad3a3af1a3424c7aa373ef79
+fetch sfeed-2.4.tar.gz https://codemadness.org/releases/sfeed/sfeed-2.4.tar.gz \
+    f9503fe9205a8136f76a9b753c6007abad33e2a516807e416a986723db06e879
 fetch cacert-2026-09-25.pem https://curl.se/ca/cacert-2026-09-25.pem \
     a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505
 zork=https://raw.githubusercontent.com/historicalsource

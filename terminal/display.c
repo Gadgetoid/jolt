@@ -23,6 +23,9 @@
 #define CURSOR_HEIGHT 2
 #define UNDERLINE_HEIGHT 1
 #define JOLT_OSC_COMMAND 7770
+#define OSC_FOREGROUND 10
+#define OSC_BACKGROUND 11
+#define REPLY_CAPACITY 48
 #define OSC_CAPACITY (JOLT_GUEST_PATH + 16)
 #define FONT_FACE L"Courier New"
 #define NOTICE_CAPACITY 128
@@ -399,8 +402,27 @@ static int on_pop_line(int columns, VTermScreenCell *cells, void *user) {
     return 1;
 }
 
+static void reply_colour(int command, COLORREF colour) {
+    char text[REPLY_CAPACITY];
+    int length = snprintf(text, sizeof text, "\033]%d;rgb:%02x%02x/%02x%02x/%02x%02x\033\\", command, GetRValue(colour),
+        GetRValue(colour), GetGValue(colour), GetGValue(colour), GetBValue(colour), GetBValue(colour));
+    if (length > 0 && length < (int)sizeof text) tty_type(text, (DWORD)length);
+}
+
+static int colour_query(VTermStringFragment fragment) {
+    return fragment.initial && fragment.final && fragment.len == 1 && fragment.str[0] == '?';
+}
+
 static int on_osc(int command, VTermStringFragment fragment, void *user) {
     (void)user;
+    if (command == OSC_FOREGROUND && colour_query(fragment)) {
+        reply_colour(command, view.theme.foreground);
+        return 1;
+    }
+    if (command == OSC_BACKGROUND && colour_query(fragment)) {
+        reply_colour(command, view.theme.background);
+        return 1;
+    }
     if (command != JOLT_OSC_COMMAND) return 0;
     if (fragment.initial) view.osc_length = 0;
     for (size_t index = 0; index < fragment.len && view.osc_length < OSC_CAPACITY - 1; index++)

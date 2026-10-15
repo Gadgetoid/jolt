@@ -17,7 +17,7 @@
 #define DEFAULT_FACE "default"
 #define MISSING_CAPACITY 96
 
-static struct display_settings current = { 0, 0, FONT_DEFAULT, THEME_CLASSIC, HOTKEYS_FULLSCREEN, "" };
+static struct display_settings current = { 0, 0, FONT_DEFAULT, THEME_DEFAULT, HOTKEYS_FULLSCREEN, "" };
 static const char *const hotkey_modes[] = { "off", "fullscreen", "always" };
 
 static int valid_font(int height) {
@@ -40,6 +40,17 @@ static int parse_hotkey_mode(const char *text, enum hotkey_mode *mode) {
     return 0;
 }
 
+static int set_theme(const char *text) {
+    char name[THEME_NAME_CAPACITY];
+    size_t length = strcspn(text, "\r\n");
+    if (length >= sizeof name) return 0;
+    memcpy(name, text, length);
+    name[length] = 0;
+    if (!theme_valid_name(name)) return 0;
+    strcpy(current.theme, name);
+    return 1;
+}
+
 static int set_face(const char *text) {
     size_t length = strcspn(text, "\r\n");
     if (length >= sizeof current.face) return 0;
@@ -53,7 +64,7 @@ static void save(void) {
     char text[SETTINGS_CAPACITY];
     int length = snprintf(text, sizeof text,
         "fullscreen=%d\r\ndark=%d\r\nfont=%d\r\ntheme=%s\r\nhotkeys=%s\r\nface=%s\r\n",
-        current.fullscreen, current.dark, current.font_height, theme_label(current.theme), hotkey_modes[current.hotkeys],
+        current.fullscreen, current.dark, current.font_height, current.theme, hotkey_modes[current.hotkeys],
         current.face);
     if (length > 0) session_write_file(SETTINGS_FILE, text, (DWORD)length, NULL, 0);
 }
@@ -77,15 +88,7 @@ void settings_load(struct display_settings *settings) {
         const char *hotkeys = value_of(text, "hotkeys=");
         if (hotkeys) parse_hotkey_mode(hotkeys, &current.hotkeys);
         const char *theme = value_of(text, "theme=");
-        if (theme) {
-            char name[16];
-            size_t length = strcspn(theme, "\r\n");
-            if (length < sizeof name) {
-                memcpy(name, theme, length);
-                name[length] = 0;
-                theme_parse(name, &current.theme);
-            }
-        }
+        if (theme) set_theme(theme);
     }
     *settings = current;
 }
@@ -112,16 +115,16 @@ static int apply_command(const char *command) {
     else if (!strcmp(command, "font+")) return step_font(FONT_STEP);
     else if (!strcmp(command, "font-")) return step_font(-FONT_STEP);
     else if (!strncmp(command, "font=", 5) && valid_font(atoi(command + 5))) current.font_height = atoi(command + 5);
-    else if (!strncmp(command, "theme=", 6)) return theme_parse(command + 6, &current.theme);
+    else if (!strncmp(command, "theme=", 6)) return set_theme(command + 6);
     else if (!strncmp(command, "face=", 5)) return set_face(command + 5);
     else if (!strncmp(command, "hotkeys=", 8)) return parse_hotkey_mode(command + 8, &current.hotkeys);
     else return 0;
     return 1;
 }
 
-static void report_missing_face(void) {
+static void report_missing(const char *kind, const char *name) {
     char text[MISSING_CAPACITY];
-    snprintf(text, sizeof text, "jolt: no fixed-width font called %s\r\n", current.face);
+    snprintf(text, sizeof text, "jolt: no %s called %s\r\n", kind, name);
     display_notice(text);
 }
 
@@ -129,8 +132,11 @@ void settings_command(const char *command) {
     struct display_settings previous = current;
     if (apply_command(command)) {
         display_apply(&current);
-        if (display_face_missing() && strcmp(current.face, previous.face)) {
-            report_missing_face();
+        int face_missing = display_face_missing() && strcmp(current.face, previous.face);
+        int theme_missing = display_theme_missing() && strcmp(current.theme, previous.theme);
+        if (face_missing) report_missing("fixed-width font", current.face);
+        if (theme_missing) report_missing("theme", current.theme);
+        if (face_missing || theme_missing) {
             current = previous;
             display_apply(&current);
         }

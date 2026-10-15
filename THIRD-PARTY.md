@@ -19,6 +19,7 @@ JoLT's own source is MIT licensed (see LICENSE). Release builds include or are b
 | Liberation Mono | 2.1.5 | OFL-1.1 | `/usr/share/fonts/LiberationMono*.ttf` |
 | Spleen | 2.2.0 | BSD-2-Clause | `/usr/share/fonts/spleen-*.jbf`, converted from BDF by `tools/bdf2jbf.js` |
 | Terminus | 4.49.1 | OFL-1.1 | `/usr/share/fonts/terminus-*.jbf`, converted from BDF by `tools/bdf2jbf.js` |
+| Colour themes: Solarized, Gruvbox, One, Dracula, Nord | | MIT (each) | Palettes in `/usr/share/themes`, by Ethan Schoonover, Pavel Pertsev, GitHub's Atom team, Zeno Rocha and Arctic Ice Studio |
 | Mozilla CA certificates (via curl.se) | 2026-09-25 | MPL-2.0 | `/etc/ssl/cert.pem`, trusted roots for curl and links |
 | dvtm | 0.15 | MIT | `/usr/bin/dvtm`, with `apps/dvtm/narrow-curses.patch` |
 | ncurses | 6.6 | X11 (MIT-style) | Terminal library linked into Vim, nano, Bash, ncdu, htop, frotz and dvtm |

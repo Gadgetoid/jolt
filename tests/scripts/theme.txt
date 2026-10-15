@@ -1,0 +1,9 @@
+jolt themes
+jolt theme nosuch
+@wait 1500
+jolt theme gruvbox
+jolt lm
+jolt dm
+jolt theme; echo "theme status $?"
+jolt theme classic
+exit 0

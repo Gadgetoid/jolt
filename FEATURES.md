@@ -54,7 +54,7 @@
 
 ### Terminal
 
-- Colour and bold rendering, classic and Solarized themes, light and dark
+- Colour and bold rendering; classic theme built in, others as kitty-format files in /usr/share/themes (Solarized, Gruvbox, One, Dracula, Nord), dark and light pairs
 - Font choice: TrueType from /usr/share/fonts via AddFontResource (DejaVu Sans Mono, Liberation Mono) or CE fonts by name
 - Bitmap fonts drawn by JoLT: Spleen (5x8 to 12x24) and Terminus (6x12 to 12x24), BDF converted at build time to 1-bit glyph sheets (.jbf), one BitBlt per cell, Courier New for missing glyphs
 - Ctrl+Shift+F toggles full screen
@@ -83,6 +83,8 @@
 
 - BusyBox text aliased from the shared image with VirtualCopy (no copy on fork or exec), batched commit and decommit, AT_RANDOM from a shared entropy pool instead of CryptoAPI per process. About 4x faster `ls` in the emulator (100 ms to 26 ms).
 - App images cached in named shared mappings keyed by path, size and mtime, with text aliased by VirtualCopy while any process uses them. Nested `bash -c :` 3x faster in the emulator. VirtualCopy needs source and destination at the same offset within 64 KB, so the ELF starts at the view base.
+
+- Drawing through a 16-bit back-buffer canvas: a shadow grid redraws only changed cells, scrolls and history paging move canvas pixels, bitmap glyphs expand through cached 8-pixel tables per colour pair, one blit per paint; output floods drain in 30 ms batches with a paint at most every 33 ms
 
 ### Fixed issues
 

@@ -8,7 +8,8 @@ usage() {
     echo "  font N  font height in pixels, 8-32 (default 16)"
     echo "  face NAME|default  fixed-width font, see jolt fonts (default Courier New)"
     echo "  fonts  list the fonts in /usr/share/fonts, bitmap ones with their sizes"
-    echo "  theme classic|solarized  colour theme"
+    echo "  theme NAME  colour theme, see jolt themes (default classic)"
+    echo "  themes  list the colour themes in /usr/share/themes"
     echo "  mount [CEPATH DIR]  map a CE folder into the tree, or list mounts"
     echo "  umount DIR  remove a mount"
     echo "  open FILE  open a file with its CE application"
@@ -81,6 +82,25 @@ list_fonts() {
     done
 }
 
+list_themes() {
+    indent=$1
+    echo "${indent}classic (built in, default)"
+    seen=" "
+    for file in /usr/share/themes/*.conf; do
+        [ -f "$file" ] || continue
+        name=${file##*/}
+        name=${name%.conf}
+        name=${name%-dark}
+        name=${name%-light}
+        case "$seen" in *" $name "*) continue ;; esac
+        seen="$seen$name "
+        modes=
+        [ -f "/usr/share/themes/$name-dark.conf" ] && modes="dark"
+        [ -f "/usr/share/themes/$name-light.conf" ] && modes="${modes:+$modes and }light"
+        if [ -n "$modes" ]; then echo "$indent$name ($modes)"; else echo "$indent$name"; fi
+    done
+}
+
 list_mounts() {
     while read -r source target type rest; do
         [ "$type" = cefs ] && printf '%s on %s\n' "$(printf '%b' "$source")" "$target"
@@ -137,10 +157,17 @@ case "$1" in
     fonts) list_fonts ;;
     theme)
         case "$2" in
-            classic|solarized) osc "theme=$2" ;;
-            *) fail_usage "theme classic|solarized" "colour theme; jolt dm and jolt lm switch dark and light" ;;
+            ''|*[!A-Za-z0-9_-]*)
+                {
+                    command_usage "theme NAME" "NAME is one of these themes; jolt dm and jolt lm pick its dark or light version:"
+                    list_themes "    "
+                } >&2
+                exit 1
+                ;;
         esac
+        osc "theme=$2"
         ;;
+    themes) list_themes ;;
     mount)
         if [ $# -eq 1 ]; then list_mounts; exit 0; fi
         if [ $# -ne 3 ]; then fail_usage "mount [CEPATH DIR]" "map a CE folder at DIR, e.g. jolt mount '\\Storage Card\\Photos' /mnt/photos" "with no arguments, list the mounts"; fi

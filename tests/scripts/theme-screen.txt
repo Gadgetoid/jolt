@@ -1,0 +1,4 @@
+jolt theme gruvbox
+jolt dm
+printf '\\033[31mred \\033[32mgreen \\033[33myellow \\033[34mblue \\033[35mmagenta \\033[36mcyan \\033[1;31mbright red\\033[0m normal\\n'
+ls -l /usr/share/themes

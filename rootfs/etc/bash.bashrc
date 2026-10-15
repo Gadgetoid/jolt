@@ -9,10 +9,20 @@ shopt -s histappend checkwinsize
 _jolt() {
     local word=${COMP_WORDS[COMP_CWORD]} choices=
     if [ "$COMP_CWORD" -eq 1 ]; then
-        choices="fs win dm lm font face fonts theme mount umount open battery shortcut hotkeys keys serial-shell help"
+        choices="fs win dm lm font face fonts theme themes mount umount open battery shortcut hotkeys keys serial-shell help"
     elif [ "$COMP_CWORD" -eq 2 ]; then
         case ${COMP_WORDS[1]} in
-            theme) choices="classic solarized" ;;
+            theme)
+                choices=classic
+                local file
+                for file in /usr/share/themes/*.conf; do
+                    file=${file##*/}
+                    file=${file%.conf}
+                    file=${file%-dark}
+                    file=${file%-light}
+                    [[ " $choices " == *" $file "* ]] || choices="$choices $file"
+                done
+                ;;
             hotkeys) choices="off fullscreen always" ;;
             font) choices="8 10 12 14 16 18 20 24 28 32" ;;
             face)

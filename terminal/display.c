@@ -51,7 +51,8 @@ struct display_state {
     int scroll;
     int shown_count, shown_rows, shown_scroll;
     struct display_settings settings;
-    const struct theme *theme;
+    struct theme theme;
+    int theme_loaded, theme_missing;
     HBRUSH background_brush, foreground_brush;
     HBITMAP splash;
     int splash_loaded;
@@ -140,8 +141,8 @@ static void view_cell(int row, int column, struct styled_cell *styled) {
 }
 
 static void cell_colours(const struct styled_cell *cell, COLORREF *foreground, COLORREF *background) {
-    *foreground = cell->style & STYLE_DEFAULT_FOREGROUND ? view.theme->foreground : cell->foreground;
-    *background = cell->style & STYLE_DEFAULT_BACKGROUND ? view.theme->background : cell->background;
+    *foreground = cell->style & STYLE_DEFAULT_FOREGROUND ? view.theme.foreground : cell->foreground;
+    *background = cell->style & STYLE_DEFAULT_BACKGROUND ? view.theme.background : cell->background;
     if (cell->style & STYLE_REVERSE) {
         COLORREF swap = *foreground;
         *foreground = *background;
@@ -447,6 +448,7 @@ void display_output(const char *bytes, DWORD count) {
     if (view.notice_length) {
         DWORD length = view.notice_length;
         view.notice_length = 0;
+        session_record_output(view.notice, length);
         vterm_input_write(view.terminal, view.notice, length);
     }
     vterm_screen_flush_damage(view.screen);
@@ -548,7 +550,7 @@ static int load_bitmap_font(void) {
 }
 
 static void refill_canvas(void) {
-    if (view.canvas.dc && view.theme) canvas_fill(&view.canvas, view.theme->background);
+    if (view.canvas.dc && view.theme_loaded) canvas_fill(&view.canvas, view.theme.background);
 }
 
 static int ensure_canvas(int rows, int columns) {
@@ -580,22 +582,23 @@ static void vterm_colour(VTermColor *colour, COLORREF value) {
 }
 
 static void apply_theme(void) {
-    view.theme = theme_lookup(view.settings.theme, view.settings.dark);
+    view.theme_missing = !theme_load(view.settings.theme, view.settings.dark, &view.theme);
+    view.theme_loaded = 1;
     if (view.foreground_brush) DeleteObject(view.foreground_brush);
     if (view.background_brush) DeleteObject(view.background_brush);
-    view.foreground_brush = CreateSolidBrush(view.theme->foreground);
-    view.background_brush = CreateSolidBrush(view.theme->background);
+    view.foreground_brush = CreateSolidBrush(view.theme.foreground);
+    view.background_brush = CreateSolidBrush(view.theme.background);
     refill_canvas();
     if (!view.terminal) return;
     VTermState *state = vterm_obtain_state(view.terminal);
-    vterm_state_set_bold_highbright(state, view.settings.theme == THEME_CLASSIC);
+    vterm_state_set_bold_highbright(state, view.theme.bold_bright);
     VTermColor foreground, background;
-    vterm_colour(&foreground, view.theme->foreground);
-    vterm_colour(&background, view.theme->background);
+    vterm_colour(&foreground, view.theme.foreground);
+    vterm_colour(&background, view.theme.background);
     vterm_state_set_default_colors(state, &foreground, &background);
     for (int index = 0; index < THEME_ANSI_COLOURS; index++) {
         VTermColor colour;
-        vterm_colour(&colour, view.theme->ansi[index]);
+        vterm_colour(&colour, view.theme.ansi[index]);
         vterm_state_set_palette_color(state, index, &colour);
     }
 }
@@ -747,13 +750,17 @@ DWORD display_describe(char *buffer, DWORD capacity) {
     family[index] = 0;
     int length = snprintf(buffer, capacity,
         "theme=%s dark=%d fullscreen=%d font=%d face=%s foreground=%06lx background=%06lx\r\n",
-        theme_label(view.settings.theme), view.settings.dark, view.settings.fullscreen, view.settings.font_height, family,
-        (unsigned long)view.theme->foreground, (unsigned long)view.theme->background);
+        view.settings.theme, view.settings.dark, view.settings.fullscreen, view.settings.font_height, family,
+        (unsigned long)view.theme.foreground, (unsigned long)view.theme.background);
     return length > 0 ? (DWORD)length : 0;
 }
 
 int display_face_missing(void) {
     return view.face_missing;
+}
+
+int display_theme_missing(void) {
+    return view.theme_missing;
 }
 
 void display_close(void) {

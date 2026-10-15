@@ -1,22 +1,13 @@
+#include <windows.h>
+#include <stdlib.h>
 #include <string.h>
 #include "theme.h"
+#include "session.h"
 
-#define SOLARIZED_BASE03 RGB(0x00, 0x2b, 0x36)
-#define SOLARIZED_BASE02 RGB(0x07, 0x36, 0x42)
-#define SOLARIZED_BASE01 RGB(0x58, 0x6e, 0x75)
-#define SOLARIZED_BASE00 RGB(0x65, 0x7b, 0x83)
-#define SOLARIZED_BASE0 RGB(0x83, 0x94, 0x96)
-#define SOLARIZED_BASE1 RGB(0x93, 0xa1, 0xa1)
-#define SOLARIZED_BASE2 RGB(0xee, 0xe8, 0xd5)
-#define SOLARIZED_BASE3 RGB(0xfd, 0xf6, 0xe3)
-#define SOLARIZED_YELLOW RGB(0xb5, 0x89, 0x00)
-#define SOLARIZED_ORANGE RGB(0xcb, 0x4b, 0x16)
-#define SOLARIZED_RED RGB(0xdc, 0x32, 0x2f)
-#define SOLARIZED_MAGENTA RGB(0xd3, 0x36, 0x82)
-#define SOLARIZED_VIOLET RGB(0x6c, 0x71, 0xc4)
-#define SOLARIZED_BLUE RGB(0x26, 0x8b, 0xd2)
-#define SOLARIZED_CYAN RGB(0x2a, 0xa1, 0x98)
-#define SOLARIZED_GREEN RGB(0x85, 0x99, 0x00)
+#define THEMES_FOLDER L"root\\usr\\share\\themes\\"
+#define THEME_EXTENSION L".conf"
+#define THEME_FILE_LIMIT 8192
+#define HEX_DIGITS 6
 
 #define CLASSIC_ANSI { \
     RGB(0, 0, 0), RGB(170, 0, 0), RGB(0, 150, 0), RGB(170, 110, 0), \
@@ -24,29 +15,87 @@
     RGB(90, 90, 90), RGB(240, 60, 60), RGB(40, 200, 40), RGB(220, 200, 40), \
     RGB(70, 70, 250), RGB(230, 70, 230), RGB(40, 210, 210), RGB(255, 255, 255) }
 
-#define SOLARIZED_ANSI { \
-    SOLARIZED_BASE02, SOLARIZED_RED, SOLARIZED_GREEN, SOLARIZED_YELLOW, \
-    SOLARIZED_BLUE, SOLARIZED_MAGENTA, SOLARIZED_CYAN, SOLARIZED_BASE2, \
-    SOLARIZED_BASE03, SOLARIZED_ORANGE, SOLARIZED_BASE01, SOLARIZED_BASE00, \
-    SOLARIZED_BASE0, SOLARIZED_VIOLET, SOLARIZED_BASE1, SOLARIZED_BASE3 }
+static const struct theme classic_light = { RGB(20, 20, 20), RGB(255, 255, 255), CLASSIC_ANSI, 1 };
+static const struct theme classic_dark = { RGB(225, 225, 225), RGB(0, 0, 0), CLASSIC_ANSI, 1 };
 
-static const struct theme classic_light = { RGB(20, 20, 20), RGB(255, 255, 255), CLASSIC_ANSI };
-static const struct theme classic_dark = { RGB(225, 225, 225), RGB(0, 0, 0), CLASSIC_ANSI };
-static const struct theme solarized_light = { SOLARIZED_BASE00, SOLARIZED_BASE3, SOLARIZED_ANSI };
-static const struct theme solarized_dark = { SOLARIZED_BASE0, SOLARIZED_BASE03, SOLARIZED_ANSI };
-
-const struct theme *theme_lookup(enum theme_name name, int dark) {
-    if (name == THEME_SOLARIZED) return dark ? &solarized_dark : &solarized_light;
-    return dark ? &classic_dark : &classic_light;
-}
-
-int theme_parse(const char *text, enum theme_name *name) {
-    if (!strcmp(text, "classic")) *name = THEME_CLASSIC;
-    else if (!strcmp(text, "solarized")) *name = THEME_SOLARIZED;
-    else return 0;
+int theme_valid_name(const char *name) {
+    size_t length = strlen(name);
+    if (!length || length >= THEME_NAME_CAPACITY) return 0;
+    for (size_t index = 0; index < length; index++) {
+        char character = name[index];
+        int allowed = (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') ||
+            (character >= '0' && character <= '9') || character == '-' || character == '_';
+        if (!allowed) return 0;
+    }
     return 1;
 }
 
-const char *theme_label(enum theme_name name) {
-    return name == THEME_SOLARIZED ? "solarized" : "classic";
+static int read_theme_file(const char *name, const WCHAR *suffix, char *text) {
+    WCHAR wide[THEME_NAME_CAPACITY], relative[MAX_PATH], path[MAX_PATH];
+    size_t length = strlen(name);
+    for (size_t index = 0; index <= length; index++) wide[index] = (WCHAR)(unsigned char)name[index];
+    wsprintfW(relative, L"%s%s%s%s", THEMES_FOLDER, wide, suffix, THEME_EXTENSION);
+    session_path(path, relative);
+    HANDLE file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (file == INVALID_HANDLE_VALUE) return 0;
+    DWORD count = 0;
+    BOOL read = ReadFile(file, text, THEME_FILE_LIMIT - 1, &count, NULL);
+    CloseHandle(file);
+    text[read ? count : 0] = 0;
+    return read;
+}
+
+static int parse_colour(const char *text, COLORREF *colour) {
+    if (*text == '#') text++;
+    char digits[HEX_DIGITS + 1];
+    for (int index = 0; index < HEX_DIGITS; index++) {
+        char character = text[index];
+        int hex = (character >= '0' && character <= '9') || (character >= 'a' && character <= 'f') ||
+            (character >= 'A' && character <= 'F');
+        if (!hex) return 0;
+        digits[index] = character;
+    }
+    digits[HEX_DIGITS] = 0;
+    unsigned long value = strtoul(digits, NULL, 16);
+    *colour = RGB((value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff);
+    return 1;
+}
+
+static void apply_line(const char *key, size_t key_length, const char *value, struct theme *theme) {
+    COLORREF colour;
+    if (!parse_colour(value, &colour)) return;
+    if (key_length == strlen("foreground") && !strncmp(key, "foreground", key_length)) theme->foreground = colour;
+    else if (key_length == strlen("background") && !strncmp(key, "background", key_length)) theme->background = colour;
+    else if (key_length > strlen("color") && !strncmp(key, "color", strlen("color"))) {
+        int index = atoi(key + strlen("color"));
+        if (index >= 0 && index < THEME_ANSI_COLOURS) theme->ansi[index] = colour;
+    }
+}
+
+static void parse_theme(const char *text, struct theme *theme) {
+    for (const char *line = text; *line;) {
+        const char *end = line + strcspn(line, "\r\n");
+        while (line < end && (*line == ' ' || *line == '\t')) line++;
+        const char *key = line;
+        while (line < end && *line != ' ' && *line != '\t') line++;
+        size_t key_length = (size_t)(line - key);
+        while (line < end && (*line == ' ' || *line == '\t')) line++;
+        if (key_length && *key != '#') apply_line(key, key_length, line, theme);
+        line = *end ? end + 1 : end;
+    }
+}
+
+int theme_load(const char *name, int dark, struct theme *theme) {
+    *theme = dark ? classic_dark : classic_light;
+    if (!strcmp(name, THEME_DEFAULT)) return 1;
+    if (!theme_valid_name(name)) return 0;
+    char *text = LocalAlloc(LMEM_FIXED, THEME_FILE_LIMIT);
+    if (!text) return 0;
+    int found = read_theme_file(name, dark ? L"-dark" : L"-light", text) || read_theme_file(name, L"", text);
+    if (found) {
+        theme->bold_bright = 0;
+        parse_theme(text, theme);
+    }
+    LocalFree(text);
+    return found;
 }

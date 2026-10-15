@@ -2,15 +2,15 @@
 #include <windows.h>
 
 #define THEME_ANSI_COLOURS 16
-
-enum theme_name { THEME_CLASSIC, THEME_SOLARIZED };
+#define THEME_NAME_CAPACITY 32
+#define THEME_DEFAULT "classic"
 
 struct theme {
     COLORREF foreground;
     COLORREF background;
     COLORREF ansi[THEME_ANSI_COLOURS];
+    int bold_bright;
 };
 
-const struct theme *theme_lookup(enum theme_name name, int dark);
-int theme_parse(const char *text, enum theme_name *name);
-const char *theme_label(enum theme_name name);
+int theme_load(const char *name, int dark, struct theme *theme);
+int theme_valid_name(const char *name);

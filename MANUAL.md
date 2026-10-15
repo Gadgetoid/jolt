@@ -69,7 +69,8 @@ jolt COMMAND [ARGUMENTS]
 | `jolt win` | Window, taskbar visible, with a scroll bar |
 | `jolt dm` | Dark mode |
 | `jolt lm` | Light mode |
-| `jolt theme classic\|solarized` | Colour theme |
+| `jolt theme NAME` | Colour theme (default `classic`) |
+| `jolt themes` | List the colour themes |
 | `jolt font N` | Font height in pixels, 8 to 32 (default 16) |
 | `jolt face NAME\|default` | Fixed-width font (default Courier New) |
 | `jolt fonts` | List the fonts that come with JoLT |
@@ -97,12 +98,36 @@ jolt shortcut "Laptop" "ssh user@192.168.1.10"
 
 ## Themes and display
 
-There are two colour themes, `classic` and `solarized`, each with a light and dark mode.
+JoLT comes with these colour themes. `jolt dm` and `jolt lm` switch between a theme's dark and light versions; themes with only one version use it for both.
+
+| Theme | Versions |
+| --- | --- |
+| `classic` | Dark and light (built in, the default) |
+| `solarized` | Dark and light |
+| `gruvbox` | Dark and light |
+| `one` | Dark and light |
+| `dracula` | Dark |
+| `nord` | Dark |
 
 | | Light | Dark |
 | --- | --- | --- |
 | Classic | ![Classic light](docs/manual/style-classic-light.png) | ![Classic dark](docs/manual/style-classic-dark.png) |
 | Solarized | ![Solarized light](docs/manual/style-solarized-light.png) | ![Solarized dark](docs/manual/style-solarized-dark.png) |
+
+### Adding themes
+
+Themes are files in `/usr/share/themes`, in the same format as the kitty terminal's themes, so most of the hundreds of kitty themes online work as they are:
+
+```
+foreground #ebdbb2
+background #282828
+color0 #282828
+color1 #cc241d
+...
+color15 #ebdbb2
+```
+
+Name a theme `NAME.conf`, or `NAME-dark.conf` and `NAME-light.conf` for a pair. Lines JoLT doesn't use, like `cursor` or `selection_background`, are ignored, and missing colours fall back to `classic`'s.
 
 Windowed mode (`jolt win`) keeps the taskbar and adds a scroll bar you can drag with the stylus:
 

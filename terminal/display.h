@@ -9,7 +9,7 @@ struct display_settings {
     int fullscreen;
     int dark;
     int font_height;
-    enum theme_name theme;
+    char theme[THEME_NAME_CAPACITY];
     enum hotkey_mode hotkeys;
     char face[LF_FACESIZE];
 };
@@ -36,3 +36,4 @@ void display_close(void);
 void display_key(VTermKey key, VTermModifier modifiers);
 void display_restore_taskbar(void);
 int display_face_missing(void);
+int display_theme_missing(void);

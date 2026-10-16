@@ -97,6 +97,7 @@
 - Vim: deleting did not remove characters, other display quirks (TERM=xterm-256color, keys encoded by libvterm, terminal query replies)
 - Trailing slash was dropped in path lookup, so `file/` resolved as `file`
 - dvtm missed resizes (pselect ignored its signal mask)
+- "cannot reserve guest memory" on Jornadas with an add-on that loads `_oredll.dll` at a fixed 0x00be0000-0x00c01000: the reservation started 64 KiB below the guest image for no reason, and now starts at 0x00c10000. The worker writes `JoLT\memory.txt` when the reservation fails
 - Vim sometimes drew a typed character only after the next key: with a 1 ms clock, its zero-wait typeahead check could compute -1 ms and block in select until the next key (`apps/vim/zero-wait.patch`). `vim-typing` types 240 keys at random speeds and fails if any takes over 400 ms to reach the screen
 - Command substitutions with pipelines (`$(echo a | cat)`) sometimes came back empty: the supervisor kept a stale handle when a process slot was reused, saw the old worker's exit and closed the new process's files
 
@@ -136,7 +137,7 @@ Reports from Brain users (CE 6.0, ARM926EJ-S):
 
 - JoLT-Term fails to launch silently: the Brain's coredll lacks CryptAcquireContextW, CryptGenRandom and CryptReleaseContext. FIXED: these and other device-specific functions (VirtualCopy, AllKeys, WsControl, SHCreateShortcut, SHLoadDIBitmap, SystemIdleTimerReset, GetClipboardDataAlloc, GetStoreInformation) are looked up by name at runtime, and a missing one disables only its feature
 - Startup failures now show a diagnostic report (CE version, CPU, screen, memory, missing functions, the failing step) and save it as JoLT\diagnostic.txt; `JoLT-Term.exe --diagnose` produces one on demand
-- With the exports patched into coredll it reached the splash, then crashed: CE 6.0 refuses commits in the low guest range (0x10000-0x7f0000) that CE 3.0 lets JoLT borrow from the worker image. FIXED, following a Brain user's working port: the worker reserves 0x00c00000-0x01400000 at runtime and programs are linked at 0x00c10000 (ABI note version 2). One layout serves both; CE 3.0 accepts an 8 MiB explicit reservation there but not 20 MiB
+- With the exports patched into coredll it reached the splash, then crashed: CE 6.0 refuses commits in the low guest range (0x10000-0x7f0000) that CE 3.0 lets JoLT borrow from the worker image. FIXED, following a Brain user's working port: the worker reserves 0x00c10000-0x01400000 at runtime and programs are linked at 0x00c10000 (ABI note version 2). One layout serves both. On CE 3.0 the reservation must stay below the DLLs at the top of the slot (coredll.dll at about 0x01fa0000)
 - CPU should be fine: ARMv4 code runs on the ARM926EJ-S
 - Untested: screen size, keyboard, hot keys; /proc/cpuinfo is hardcoded to StrongARM-1110
 

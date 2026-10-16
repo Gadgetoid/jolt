@@ -15,10 +15,15 @@ struct optional_function jolt_load_bitmap = { NULL, L"SHLoadDIBitmap", 0, NULL }
 struct optional_function jolt_idle_reset = { NULL, L"SystemIdleTimerReset", 0, NULL };
 struct optional_function jolt_clipboard_read = { NULL, L"GetClipboardDataAlloc", 0, NULL };
 struct optional_function jolt_store_information = { NULL, L"GetStoreInformation", 0, NULL };
+struct optional_function jolt_create_snapshot = { L"toolhelp.dll", L"CreateToolhelp32Snapshot", 0, NULL };
+struct optional_function jolt_module_first = { L"toolhelp.dll", L"Module32First", 0, NULL };
+struct optional_function jolt_module_next = { L"toolhelp.dll", L"Module32Next", 0, NULL };
+struct optional_function jolt_close_snapshot = { L"toolhelp.dll", L"CloseToolhelp32Snapshot", 0, NULL };
 
 struct optional_function *const jolt_optional_functions[] = {
     &jolt_virtual_copy, &jolt_all_keys, &jolt_ws_control, &jolt_crypt_acquire, &jolt_crypt_generate,
     &jolt_create_shortcut, &jolt_load_bitmap, &jolt_idle_reset, &jolt_clipboard_read, &jolt_store_information,
+    &jolt_create_snapshot, &jolt_module_first, &jolt_module_next, &jolt_close_snapshot,
 };
 const int jolt_optional_count = sizeof jolt_optional_functions / sizeof jolt_optional_functions[0];
 

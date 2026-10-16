@@ -4,6 +4,7 @@
 #include <string.h>
 #include <wchar.h>
 #include "worker.h"
+#include "memorymap.h"
 #include "memory.h"
 #include "process.h"
 #include "files.h"
@@ -92,15 +93,18 @@ static DWORD slot_address(const void *address) {
     return (DWORD)address & SLOT_MASK;
 }
 
-static int guest_layout_available(int report) {
+static int guest_layout_available(int report, const WCHAR *folder) {
     volatile BYTE stack_probe = 0;
     if (VirtualAlloc((void *)GUEST_RESERVE_BASE, GUEST_RESERVE_LIMIT - GUEST_RESERVE_BASE, MEM_RESERVE, PAGE_NOACCESS) !=
         (void *)GUEST_RESERVE_BASE) {
         MEMORY_BASIC_INFORMATION area;
         memset(&area, 0, sizeof area);
         VirtualQuery((void *)GUEST_RESERVE_BASE, &area, sizeof area);
-        if (report) diagnose("worker: cannot reserve guest memory %08lx-%08lx (error %lu, base %08lx state %lx type %lx)",
-            GUEST_RESERVE_BASE, GUEST_RESERVE_LIMIT, GetLastError(), (DWORD)area.AllocationBase, area.State, area.Type);
+        if (!report) return 0;
+        DWORD error = GetLastError();
+        memory_map_write(folder);
+        diagnose("worker: cannot reserve guest memory %08lx-%08lx (error %lu, base %08lx state %lx type %lx, map in memory.txt)",
+            GUEST_RESERVE_BASE, GUEST_RESERVE_LIMIT, error, (DWORD)area.AllocationBase, area.State, area.Type);
         return 0;
     }
     DWORD code = slot_address((const void *)WinMain), data = slot_address(&state), stack = slot_address((const void *)&stack_probe);
@@ -196,7 +200,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPWSTR command_line, 
     if (!filename) return 1;
     wcscpy(folder, worker_path);
     folder[filename - worker_path + 1] = 0;
-    int layout = guest_layout_available(!spare);
+    int layout = guest_layout_available(!spare, folder);
     int ready = layout && jolt_files_init(folder);
     if (layout && !ready && !spare) diagnose("worker: cannot open the JoLT folder");
     if (spare && (!ready || !wait_as_spare(&assigned_slot))) {

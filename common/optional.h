@@ -9,7 +9,8 @@ struct optional_function {
 };
 
 extern struct optional_function jolt_virtual_copy, jolt_all_keys, jolt_ws_control, jolt_crypt_acquire, jolt_crypt_generate,
-    jolt_create_shortcut, jolt_load_bitmap, jolt_idle_reset, jolt_clipboard_read, jolt_store_information;
+    jolt_create_shortcut, jolt_load_bitmap, jolt_idle_reset, jolt_clipboard_read, jolt_store_information, jolt_create_snapshot,
+    jolt_module_first, jolt_module_next, jolt_close_snapshot;
 extern struct optional_function *const jolt_optional_functions[];
 extern const int jolt_optional_count;
 

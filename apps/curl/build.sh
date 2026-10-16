@@ -14,7 +14,7 @@ source_dir="$output/src/curl-8.22.0"
         --disable-ldap --disable-ldaps --disable-rtsp --disable-dict --disable-telnet --disable-tftp \
         --disable-pop3 --disable-imap --disable-smtp --disable-gopher --disable-mqtt --disable-smb \
         --disable-manual --disable-docs --disable-unix-sockets --disable-ntlm --disable-kerberos-auth \
-        --with-ca-bundle=/etc/ssl/cert.pem --without-ca-path > configure.log
+        --with-ca-bundle=/etc/ssl/cert.pem --without-ca-path --enable-ssls-export > configure.log
     make -j"$jobs" > make.log 2>&1
 )
 finish_app "$source_dir/src/curl" curl

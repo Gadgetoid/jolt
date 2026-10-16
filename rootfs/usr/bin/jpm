@@ -35,13 +35,17 @@ abi() {
     awk '$1 == "abi:" { print $2; found = 1 } END { if (!found) print 1 }' /proc/jolt 2>/dev/null
 }
 
+download() {
+    host=${1#*://}
+    shift
+    echo "jpm: connecting to ${host%%/*}, this can take a minute"
+    mkdir -p "$state"
+    curl -fSL --connect-timeout 60 --max-time 900 --ssl-sessions "$state/tls-sessions" "$@"
+}
+
 fetch() {
     case "$1" in
-        http://*|https://*)
-            host=${1#*://}
-            echo "jpm: connecting to ${host%%/*}, this can take a minute"
-            curl -fSL --connect-timeout 60 --max-time 900 ${3:+-#} -o "$2" "$1"
-            ;;
+        http://*|https://*) download "$1" -s -S -o "$2" "$1" ;;
         *) cp "$1" "$2" ;;
     esac
 }
@@ -64,16 +68,6 @@ is_installed() {
 
 installed_version() {
     field "$state/$1/PKGINFO" "$1" pkgver
-}
-
-owner() {
-    for list in "$state"/*/files; do
-        [ -r "$list" ] || continue
-        if grep -qxF "$1" "$list"; then
-            basename "$(dirname "$list")"
-            return
-        fi
-    done
 }
 
 update() {
@@ -172,19 +166,34 @@ install_file() {
         is_installed "$dependency" || fail "$name needs $dependency"
     done
     mv "$work/stage/.PKGINFO" "$work/PKGINFO"
+    echo "jpm: checking $name $version"
     (cd "$work/stage" && find . ! -type d | sed 's|^\./|/|') | sort > "$work/files"
+    conflict=$(awk -v self="$name" '
+        FNR == NR { wanted[$0] = 1; next }
+        ($0 in wanted) {
+            owner = FILENAME
+            sub(/\/files$/, "", owner)
+            sub(/.*\//, "", owner)
+            if (owner != self) { print $0 " belongs to " owner; exit }
+        }
+    ' "$work/files" "$state"/*/files 2>/dev/null)
+    [ -z "$conflict" ] || fail "$conflict"
+    owned=
+    is_installed "$name" && owned=$(cat "$state/$name/files")
     while read -r path; do
-        current=$(owner "$path")
-        if [ -n "$current" ] && [ "$current" != "$name" ]; then
-            fail "$path belongs to $current"
-        fi
-        if [ -z "$current" ] && [ -e "$path" ]; then
-            fail "$path already exists"
-        fi
+        case "
+$owned
+" in
+            *"
+$path
+"*) ;;
+            *) [ -e "$path" ] && fail "$path already exists" ;;
+        esac
     done < "$work/files"
-    while read -r path; do
-        mkdir -p "$(dirname "$path")" && cp -P "$work/stage$path" "$path" || fail "could not copy $path into place"
-    done < "$work/files"
+    count=$(wc -l < "$work/files")
+    if [ "$count" -eq 1 ]; then echo "jpm: installing $name (1 file)"; else echo "jpm: installing $name ($count files)"; fi
+    (cd "$work/stage" && sed 's|^/||' "$work/files" | tar -cf - -T -) | tar -xf - -C / 2>/dev/null ||
+        fail "could not copy $name into place"
     if is_installed "$name"; then
         sort "$state/$name/files" | comm -23 - "$work/files" | while read -r path; do rm -f "$path"; done
     fi
@@ -200,18 +209,35 @@ install_named() {
     repo=$(repository)
     [ -n "$repo" ] || fail "no repository set in $config"
     work=$(mktemp -d /tmp/jpm.XXXXXX)
-    filename=$(field "$index" "$1" filename)
-    expected=$(field "$index" "$1" sha256)
-    echo "jpm: fetching $filename"
-    fetch "$repo/abi$(abi)/$filename" "$work/$filename" progress || { rm -rf "$work"; fail "could not fetch $filename"; }
-    actual=$(sha256sum "$work/$filename" | awk '{ print $1 }')
-    if [ "$actual" != "$expected" ]; then
-        rm -rf "$work"
-        fail "$filename is damaged or has changed, run 'jpm update'"
-    fi
-    package="$work/$filename"
-    (install_file "$package") || { rm -rf "$work"; exit 1; }
+    trap 'rm -rf "$work"' EXIT
+    base="$repo/abi$(abi)"
+    case "$base" in
+        http://*|https://*)
+            set --
+            for name in $order; do
+                filename=$(field "$index" "$name" filename)
+                set -- "$@" -o "$work/$filename" "$base/$filename"
+            done
+            echo "jpm: fetching$order"
+            download "$base" -# "$@" > /dev/null || fail "could not fetch$order"
+            ;;
+        *)
+            for name in $order; do
+                filename=$(field "$index" "$name" filename)
+                cp "$base/$filename" "$work/$filename" || fail "no file $base/$filename"
+            done
+            ;;
+    esac
+    for name in $order; do
+        filename=$(field "$index" "$name" filename)
+        actual=$(sha256sum "$work/$filename" | awk '{ print $1 }')
+        [ "$actual" = "$(field "$index" "$name" sha256)" ] || fail "$filename is damaged or has changed, run 'jpm update'"
+    done
+    for name in $order; do
+        (install_file "$work/$(field "$index" "$name" filename)") || exit 1
+    done
     rm -rf "$work"
+    trap - EXIT
 }
 
 install() {
@@ -231,9 +257,7 @@ install() {
                 ;;
         esac
     done
-    for name in $order; do
-        install_named "$name"
-    done
+    [ -z "$order" ] || (install_named) || exit 1
 }
 
 remove() {

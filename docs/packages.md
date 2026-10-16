@@ -46,7 +46,7 @@ pkgname = lrzsz
 ...
 ```
 
-The repository is set in `/etc/jpm.conf`, or `JPM_REPO` for one command. The default is `https://github.com/Gadgetoid/jolt-packages/releases/download`, where each ABI version is a release: `abi2/index` is the `index` asset of the `abi2` release.
+The repository is set in `/etc/jpm.conf`, or `JPM_REPO` for one command. The default is `https://gadgetoid.github.io/jolt-packages`, published from jolt-packages to GitHub Pages, so the index is `https://gadgetoid.github.io/jolt-packages/abi2/index`.
 
 ## On the device
 

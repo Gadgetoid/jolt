@@ -37,7 +37,11 @@ abi() {
 
 fetch() {
     case "$1" in
-        http://*|https://*) curl -fsSL -o "$2" "$1" ;;
+        http://*|https://*)
+            host=${1#*://}
+            echo "jpm: connecting to ${host%%/*}, this can take a minute"
+            curl -fSL --connect-timeout 60 --max-time 900 ${3:+-#} -o "$2" "$1"
+            ;;
         *) cp "$1" "$2" ;;
     esac
 }
@@ -189,7 +193,7 @@ install_named() {
     filename=$(field "$index" "$1" filename)
     expected=$(field "$index" "$1" sha256)
     echo "jpm: fetching $filename"
-    fetch "$repo/abi$(abi)/$filename" "$work/$filename" || { rm -rf "$work"; fail "could not fetch $filename"; }
+    fetch "$repo/abi$(abi)/$filename" "$work/$filename" progress || { rm -rf "$work"; fail "could not fetch $filename"; }
     actual=$(sha256sum "$work/$filename" | awk '{ print $1 }')
     if [ "$actual" != "$expected" ]; then
         rm -rf "$work"

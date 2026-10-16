@@ -32,6 +32,6 @@ JoLT's own source is MIT licensed (see LICENSE). Release builds include or are b
 | Dropbear | 2026.94 | MIT-style | `/usr/bin/dbclient`, `/usr/bin/dropbearkey` |
 | Zork I, II, III | historicalsource | MIT | Story files in `/usr/share/games/zork` |
 | libvterm | 0.3.3 | MIT | Terminal emulation in `JoLT-Term.exe` |
-| crypto-algorithms (Brad Conte) | cfbde48 | Public domain | SHA-256 in `JoLT-Term.exe` and `JoltWorker.exe` |
+| crypto-algorithms (Brad Conte) | cfbde48 | Public domain | SHA-256 in `JoLT-Term.exe`, `JoltWorker.exe` and `/usr/bin/jpm` |
 
 Each release has a `gpl-sources` archive with the complete corresponding source of the GPL programs above: their upstream archives, the musl, compiler-rt, ncurses and LibreSSL archives they are statically linked with, `busybox.config` and the frotz patch. The build scripts are this repository's `guest/`, `apps/` and `tools/` directories. `tools/fetch.sh` lists every upstream URL and SHA-256 checksum, including the permissively licensed components, which are unmodified.

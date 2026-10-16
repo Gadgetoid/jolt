@@ -346,6 +346,12 @@ jpm install sacc
 | `jpm remove NAME` | Remove a package |
 | `jpm upgrade` | Install newer versions of installed packages |
 | `jpm installed` | List installed packages |
+| `jpm files NAME` | List the files a package installed |
+| `jpm verify [NAME]` | Check installed files haven't changed or gone missing |
+
+Package versions are the upstream version and a package release, such as `sacc 1.07-1`. `jpm upgrade` only installs versions newer than the ones you have.
+
+`jpm` records each package's details, files and their checksums in `/var/lib/jpm/NAME/`. If you edit a file a package installed, `jpm remove` leaves it in place, and `jpm upgrade` keeps your version and puts the new one next to it as `FILE.jpmnew`.
 
 Without a network, copy a `.pkg.tar.gz` to the card and `jpm install /path/to/it.pkg.tar.gz`. Packages must be built for the same release series as JoLT; `jpm` refuses ones that aren't.
 

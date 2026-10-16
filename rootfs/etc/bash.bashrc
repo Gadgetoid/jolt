@@ -44,11 +44,11 @@ complete -o default -F _jolt jolt
 _jpm() {
     local word=${COMP_WORDS[COMP_CWORD]} choices=
     if [ "$COMP_CWORD" -eq 1 ]; then
-        choices="update list installed search info install remove upgrade files help"
+        choices="update list installed search info install remove upgrade files verify help"
     else
         case ${COMP_WORDS[1]} in
             install|info) [ -r /var/lib/jpm/index ] && choices=$(awk '$1 == "pkgname" { print $3 }' /var/lib/jpm/index) ;;
-            remove|files)
+            remove|files|verify)
                 local directory
                 for directory in /var/lib/jpm/*/; do
                     [ -r "$directory/PKGINFO" ] && directory=${directory%/} && choices="$choices ${directory##*/}"

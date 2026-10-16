@@ -50,7 +50,7 @@ The repository is set in `/etc/jpm.conf`, or `JPM_REPO` for one command. The def
 
 ## On the device
 
-`jpm` keeps the index in `/var/lib/jpm/index` and each installed package's `.PKGINFO` and file list in `/var/lib/jpm/NAME/`. It checks the sha256 and `arch` of every package, refuses paths outside the package and files another package owns, and installs dependencies first.
+`jpm` keeps the index in `/var/lib/jpm/index`, and for each installed package its `.PKGINFO`, a `files` list and `sha256sums` (in `sha256sum -c` format) in `/var/lib/jpm/NAME/`. Versions compare as pacman's `vercmp` does: numbers numerically, letters alphabetically, and a letter suffix is older than none (`1.0rc1` before `1.0`), then by package release. It checks the sha256 and `arch` of every package, refuses paths outside the package and files another package owns, and installs dependencies first. Files changed since install are kept on remove, and on upgrade the new version is written alongside as `FILE.jpmnew`.
 
 ## Building
 

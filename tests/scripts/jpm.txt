@@ -15,9 +15,14 @@ jpm files beta
 jpm remove alpha; echo remove-needed $?
 jpm install gamma; echo wrong-arch $?
 rm /tmp/repo/abi2/alpha-1-1.pkg.tar.gz; pkg alpha 2-1 any; index; jpm update; jpm upgrade; alpha
+jpm verify; echo verify $?
+echo '# local change' >> /usr/bin/alpha; jpm verify alpha; echo verify-changed $?
+rm /tmp/repo/abi2/alpha-2-1.pkg.tar.gz; pkg alpha 1-9 any; index; jpm update > /dev/null; jpm install alpha; jpm upgrade
+rm /tmp/repo/abi2/alpha-1-9.pkg.tar.gz; pkg alpha 3-1 any; index; jpm update > /dev/null; jpm upgrade; grep -c 3-1 /usr/bin/alpha.jpmnew; grep -c 'local change' /usr/bin/alpha
 printf 'corrupt' >> /tmp/repo/abi2/beta-1-1.pkg.tar.gz; jpm remove beta; jpm install beta; echo bad-sha $?
 pkg clash 1-1 any; mv s/usr/bin/clash s/usr/bin/alpha; (cd s && tar -czf /tmp/clash.pkg.tar.gz .PKGINFO usr/bin/alpha); jpm install /tmp/clash.pkg.tar.gz; echo conflict $?
 jpm install /tmp/traversal.pkg.tar.gz; echo traversal $?; jpm install /tmp/rooted.pkg.tar.gz; echo rooted $?; ls /etc/evil /etc/rooted 2>&1 | grep -c 'No such'
-jpm remove alpha; echo removed $?; ls /usr/bin/alpha 2>&1 | grep -c 'No such'
+jpm remove alpha; echo removed $?; grep -c 'local change' /usr/bin/alpha
 jpm; echo usage $?
+ls -d /tmp/jpm.* 2>/dev/null | wc -l | sed 's/^/leftovers /'
 exit 0

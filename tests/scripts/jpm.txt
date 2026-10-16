@@ -6,9 +6,11 @@ export JPM_REPO=/tmp/repo
 grep -c '^abi: 2' /proc/jolt
 jpm update
 jpm list
+jpm search BETA
 jpm install beta; echo install $?
 alpha; beta
 jpm installed
+jpm list | grep '^\*'
 jpm files beta
 jpm remove alpha; echo remove-needed $?
 jpm install gamma; echo wrong-arch $?

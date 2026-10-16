@@ -317,6 +317,7 @@ These live in `/usr/bin`:
 | `ncdu` | Disk usage browser, needs more than 15 rows: use `jolt font 12` |
 | `frotz` | Z-machine interpreter for text adventures |
 | `zork` | Zork I, II or III: `zork 2` |
+| `jpm` | Install more programs and fonts, see [Installing more programs](#installing-more-programs) |
 | `joltfetch` | System summary, also `neofetch` |
 | `jolt` | Terminal settings and CE integration, see [The "jolt" command](#2-the-jolt-command) |
 
@@ -324,6 +325,31 @@ These live in `/usr/bin`:
 | --- | --- |
 | ![vim](docs/manual/vim.png) | ![links](docs/manual/links.png) |
 | ![MicroPython](docs/manual/micropython.png) | ![Zork](docs/manual/zork.png) |
+
+## Installing more programs
+
+`jpm` installs extra programs and fonts from [jolt-packages](https://github.com/Gadgetoid/jolt-packages). It needs a network connection.
+
+```sh
+jpm update
+jpm list
+jpm install sacc
+```
+
+| Command | |
+| --- | --- |
+| `jpm update` | Fetch the list of packages, do this first and now and then |
+| `jpm list` | List packages, `*` marks the ones installed |
+| `jpm search TEXT` | Find packages by name or description |
+| `jpm info NAME` | Describe a package |
+| `jpm install NAME` | Install a package and anything it needs |
+| `jpm remove NAME` | Remove a package |
+| `jpm upgrade` | Install newer versions of installed packages |
+| `jpm installed` | List installed packages |
+
+Without a network, copy a `.pkg.tar.gz` to the card and `jpm install /path/to/it.pkg.tar.gz`. Packages must be built for the same release series as JoLT; `jpm` refuses ones that aren't.
+
+Packages are installed under `JoLT\root`, so replacing the `JoLT` folder to upgrade removes them. Note them with `jpm installed` first and reinstall them afterwards.
 
 ## Reading feeds with sfeed
 

@@ -1,0 +1,21 @@
+mkdir -p /tmp/repo/abi2 /tmp/p && cd /tmp/p
+pkg() { rm -rf s && mkdir -p s/usr/bin && printf '#!/bin/sh\necho %s says %s\n' "$1" "$2" > "s/usr/bin/$1" && chmod +x "s/usr/bin/$1" && printf 'pkgname = %s\npkgver = %s\npkgdesc = test %s\narch = %s\nsize = 1\n' "$1" "$2" "$1" "$3" > s/.PKGINFO && [ -z "$4" ] || printf 'depend = %s\n' "$4" >> s/.PKGINFO; (cd s && tar -czf "/tmp/repo/abi2/$1-$2.pkg.tar.gz" .PKGINFO usr/bin/$1); }
+index() { : > /tmp/repo/abi2/index; for f in /tmp/repo/abi2/*.pkg.tar.gz; do tar -xzOf "$f" .PKGINFO >> /tmp/repo/abi2/index; printf 'filename = %s\nsha256 = %s\n\n' "${f##*/}" "$(sha256sum "$f" | cut -d' ' -f1)" >> /tmp/repo/abi2/index; done; }
+pkg alpha 1-1 any; pkg beta 1-1 jolt2 alpha; pkg gamma 1-1 jolt9; index
+export JPM_REPO=/tmp/repo
+grep -c '^abi: 2' /proc/jolt
+jpm update
+jpm list
+jpm install beta; echo install $?
+alpha; beta
+jpm installed
+jpm files beta
+jpm remove alpha; echo remove-needed $?
+jpm install gamma; echo wrong-arch $?
+rm /tmp/repo/abi2/alpha-1-1.pkg.tar.gz; pkg alpha 2-1 any; index; jpm update; jpm upgrade; alpha
+printf 'corrupt' >> /tmp/repo/abi2/beta-1-1.pkg.tar.gz; jpm remove beta; jpm install beta; echo bad-sha $?
+pkg clash 1-1 any; mv s/usr/bin/clash s/usr/bin/alpha; (cd s && tar -czf /tmp/clash.pkg.tar.gz .PKGINFO usr/bin/alpha); jpm install /tmp/clash.pkg.tar.gz; echo conflict $?
+jpm install /tmp/traversal.pkg.tar.gz; echo traversal $?; jpm install /tmp/rooted.pkg.tar.gz; echo rooted $?; ls /etc/evil /etc/rooted 2>&1 | grep -c 'No such'
+jpm remove alpha; echo removed $?; ls /usr/bin/alpha 2>&1 | grep -c 'No such'
+jpm; echo usage $?
+exit 0

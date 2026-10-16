@@ -36,4 +36,5 @@ cp -R guest/musl build/dist/sources/musl-patches
 printf '%s\n' "Build scripts and patches: https://github.com/Gadgetoid/jolt (guest/, apps/, tools/)" > build/dist/sources/README.txt
 tar -cf "build/dist/jolt-$version-gpl-sources.tar" -C build/dist sources
 rm -rf build/dist/sources
-shasum -a 256 build/dist/*.zip build/dist/*.tar
+bash tools/sdk.sh "$version"
+shasum -a 256 build/dist/*.zip build/dist/*.tar build/dist/*.tar.gz

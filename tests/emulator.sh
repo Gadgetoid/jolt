@@ -4,7 +4,7 @@ set -euo pipefail
 workspace=$(cd "$(dirname "$0")/.." && pwd)
 emulator=${JORNADA_EMU:-"$workspace/../jornada-72x-emu"}
 state=${JORNADA_STATE:-"$emulator/build/user-latest.state"}
-scripts=${JOLT_SCRIPTS:-"smoke shell interrupt vi spawn display font fullscreen-exit colour jobs apps lua network extras netapps qol desktop vim shortcut launch hold serial apps2 ping bash pty dvtm dvtm-resize serial-shell bitmap-font subst sfeed theme vim-typing colour-screen fonts-screen dvtm-screen bitmap-screen scroll-screen theme-screen sfeed-screen"}
+scripts=${JOLT_SCRIPTS:-"smoke shell interrupt vi spawn display font fullscreen-exit colour jobs apps lua network extras netapps qol desktop vim shortcut launch hold serial apps2 ping bash pty dvtm dvtm-resize serial-shell bitmap-font subst sfeed jpm theme | vim-typing | colour-screen fonts-screen dvtm-screen bitmap-screen scroll-screen theme-screen sfeed-screen"}
 batch_size=${JOLT_BATCH:-4}
 socket="/tmp/jolt-qa-$$.sock"
 serial_port=$((20000 + $$ % 10000))
@@ -68,7 +68,11 @@ check_no_processes() {
 
 run_screen_script() {
     local name=$1
-    wait_for JoltScreen.ready "$qa/$name.txt"
+    if ! wait_for JoltScreen.ready "$qa/$name.txt"; then
+        rapi get "$card/diagnostic.txt" "$qa/$name-diagnostic.txt" 2>/dev/null && cat "$qa/$name-diagnostic.txt"
+        rapi info
+        return 1
+    fi
     cat "$qa/$name.txt"
     sleep 2
 }
@@ -113,15 +117,26 @@ mkdir -p "$qa/card"
 cp -R build/dist/stage/JoLT "$stage"
 printf '%s\n' 'Welcome to the JoLT CF root.' > "$stage/root/welcome.txt"
 cp tests/scripts/*.txt "$stage/"
+cp tests/fixtures/* "$stage/root/tmp/"
 if [[ -n ${JOLT_TERM_EXE:-} ]]; then cp "$JOLT_TERM_EXE" "$stage/JoLT-Term.exe"; fi
 sh "$emulator/tools/mkcard.sh" "$qa/card.cf" 32 "$stage"
 
-read -r -a names <<< "$scripts"
-for ((first = 0; first < ${#names[@]}; first += batch_size)); do
+run_batch() {
+    [[ $# -gt 0 ]] || return 0
+    local script
     start_emulator
-    for name in "${names[@]:first:batch_size}"; do run_script "$name"; done
+    for script in "$@"; do run_script "$script"; done
     rapi info
     stop_emulator
-    if [[ -f $qa/screen.png ]]; then mv "$qa/screen.png" "$qa/screen-$name.png"; fi
+    if [[ -f $qa/screen.png ]]; then mv "$qa/screen.png" "$qa/screen-$script.png"; fi
+}
+
+batch=()
+for name in $scripts "|"; do
+    if [[ $name == "|" || ${#batch[@]} -eq $batch_size ]]; then
+        run_batch ${batch[@]+"${batch[@]}"}
+        batch=()
+    fi
+    [[ $name == "|" ]] || batch+=("$name")
 done
 printf '%s\n' 'PASS: JoLT shell QA; CE responsive'

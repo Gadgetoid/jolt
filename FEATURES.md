@@ -34,6 +34,7 @@
 - Vim 9.2 tiny over ncurses 6.6
 - MicroPython 1.29 UNIX port (no threads, FFI or SSL)
 - dvtm 0.15 (narrow ncurses; dvtm and dvtm-256color terminfo built into the ncurses fallbacks)
+- `jpm` package manager (BusyBox sh): Arch-style `.pkg.tar.gz` with `.PKGINFO`, sha256-checked index per ABI, dependency order, file ownership and conflict checks, refuses paths outside the package. Packages from github.com/Gadgetoid/jolt-packages, built with the `jolt-sdk` release asset
 - sfeed 2.4 with sfeed_curses, behind a `feeds` command; articles through links, `y` copies to /dev/clipboard
 - popen, system and posix_spawn (musl's __clone forks for CLONE_VFORK)
 - BusyBox xargs -P
@@ -141,8 +142,8 @@ Reports from Brain users (CE 6.0, ARM926EJ-S):
 
 ### Possible?
 
-- Tiny Core Linux style expansion apps, like .tcz? Or could `/Storage Card/JoLT/root/usr/bin` just hold runnable user apps with no need for containers?
-- Installing packages: our own index somewhere, hosted on GitHub Pages?
+- More packages: nethack, angband, sc-im, calcurse (needs threads), catdoc, QuickJS, sqlite3, lynx, tcc
+- `jolt fit COLSxROWS` and `jolt restore`, so games can pick a font that fits and put it back on exit
 
 ### Moon shots
 

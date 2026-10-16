@@ -1,0 +1,285 @@
+#!/bin/sh
+
+state=/var/lib/jpm
+index="$state/index"
+config=/etc/jpm.conf
+
+usage() {
+    echo "usage: jpm COMMAND [PACKAGE...]"
+    echo
+    echo "  update            fetch the list of packages"
+    echo "  list              list available packages, * marks installed"
+    echo "  installed         list installed packages"
+    echo "  search TEXT       find packages by name or description"
+    echo "  info PACKAGE      describe a package"
+    echo "  install PACKAGE   install packages and what they need, or a .pkg.tar.gz file"
+    echo "  remove PACKAGE    remove packages"
+    echo "  upgrade           install newer versions of installed packages"
+    echo "  files PACKAGE     list the files a package installed"
+}
+
+fail() {
+    echo "jpm: $*" >&2
+    exit 1
+}
+
+repository() {
+    if [ -n "${JPM_REPO:-}" ]; then
+        echo "$JPM_REPO"
+        return
+    fi
+    [ -r "$config" ] && awk '$1 == "repo" { print $2; exit }' "$config"
+}
+
+abi() {
+    awk '$1 == "abi:" { print $2; found = 1 } END { if (!found) print 1 }' /proc/jolt 2>/dev/null
+}
+
+fetch() {
+    case "$1" in
+        http://*|https://*) curl -fsSL -o "$2" "$1" ;;
+        *) cp "$1" "$2" ;;
+    esac
+}
+
+field() {
+    awk -v name="$2" -v key="$3" '
+        $1 == "pkgname" { current = $3 }
+        current == name && $1 == key { sub(/^[^=]*= /, ""); print }
+    ' "$1"
+}
+
+available() {
+    [ -r "$index" ] || fail "no package list, run 'jpm update'"
+    awk '$1 == "pkgname" { print $3 }' "$index"
+}
+
+is_installed() {
+    [ -r "$state/$1/PKGINFO" ]
+}
+
+installed_version() {
+    field "$state/$1/PKGINFO" "$1" pkgver
+}
+
+owner() {
+    for list in "$state"/*/files; do
+        [ -r "$list" ] || continue
+        if grep -qxF "$1" "$list"; then
+            basename "$(dirname "$list")"
+            return
+        fi
+    done
+}
+
+update() {
+    repo=$(repository)
+    [ -n "$repo" ] || fail "no repository set in $config"
+    mkdir -p "$state"
+    fetch "$repo/abi$(abi)/index" "$index.new" || fail "could not fetch $repo/abi$(abi)/index"
+    mv "$index.new" "$index"
+    count=$(available | wc -l)
+    if [ "$count" -eq 1 ]; then echo "jpm: 1 package available"; else echo "jpm: $count packages available"; fi
+}
+
+list() {
+    for name in $(available); do
+        mark=" "
+        is_installed "$name" && mark="*"
+        printf '%s %-20s %s\n' "$mark" "$name $(field "$index" "$name" pkgver)" "$(field "$index" "$name" pkgdesc)"
+    done
+}
+
+installed() {
+    for directory in "$state"/*/; do
+        name=$(basename "$directory")
+        is_installed "$name" && printf '%-20s %s\n' "$name" "$(installed_version "$name")"
+    done
+}
+
+search() {
+    [ -n "${1:-}" ] || fail "usage: jpm search TEXT"
+    for name in $(available); do
+        description=$(field "$index" "$name" pkgdesc)
+        if printf '%s %s\n' "$name" "$description" | grep -qi -- "$1"; then
+            printf '%-20s %s\n' "$name" "$description"
+        fi
+    done
+}
+
+info() {
+    [ -n "${1:-}" ] || fail "usage: jpm info PACKAGE"
+    if [ -r "$index" ] && [ -n "$(field "$index" "$1" pkgname)" ]; then
+        source="$index"
+    elif is_installed "$1"; then
+        source="$state/$1/PKGINFO"
+    else
+        fail "no package called $1"
+    fi
+    awk -v name="$1" '
+        $1 == "pkgname" { current = $3 }
+        current == name && $1 != "sha256" && $1 != "filename" { print }
+    ' "$source"
+    is_installed "$1" && echo "installed = $(installed_version "$1")"
+}
+
+resolve() {
+    case " $order " in *" $1 "*) return ;; esac
+    case " $visiting " in *" $1 "*) fail "packages depend on each other: $visiting $1" ;; esac
+    [ -n "$(field "$index" "$1" pkgname)" ] || fail "no package called $1"
+    visiting="$visiting $1"
+    for dependency in $(field "$index" "$1" depend); do
+        is_installed "$dependency" || resolve "$dependency"
+    done
+    order="$order $1"
+}
+
+check_paths() {
+    tar -tzf "$1" > "$work/list" 2> "$work/warnings" || fail "could not read $1"
+    if grep -qE '^/|(^|/)\.\.(/|$)' "$work/list" || grep -q 'removing leading' "$work/warnings"; then
+        fail "$1 has files outside the package"
+    fi
+}
+
+install_file() {
+    file=$1
+    work=$(mktemp -d /tmp/jpm.XXXXXX)
+    trap 'rm -rf "$work"' EXIT
+    check_paths "$file"
+    mkdir "$work/stage"
+    tar -xzf "$file" -C "$work/stage" || fail "could not unpack $file"
+    [ -r "$work/stage/.PKGINFO" ] || fail "$file is not a package"
+    name=$(awk '$1 == "pkgname" { print $3; exit }' "$work/stage/.PKGINFO")
+    version=$(field "$work/stage/.PKGINFO" "$name" pkgver)
+    arch=$(field "$work/stage/.PKGINFO" "$name" arch)
+    [ -n "$name" ] || fail "$file has no pkgname"
+    [ "$arch" = any ] || [ "$arch" = "jolt$(abi)" ] || fail "$name is for $arch, this JoLT runs jolt$(abi)"
+    for dependency in $(field "$work/stage/.PKGINFO" "$name" depend); do
+        is_installed "$dependency" || fail "$name needs $dependency"
+    done
+    mv "$work/stage/.PKGINFO" "$work/PKGINFO"
+    (cd "$work/stage" && find . ! -type d | sed 's|^\./|/|') | sort > "$work/files"
+    while read -r path; do
+        current=$(owner "$path")
+        if [ -n "$current" ] && [ "$current" != "$name" ]; then
+            fail "$path belongs to $current"
+        fi
+        if [ -z "$current" ] && [ -e "$path" ]; then
+            fail "$path already exists"
+        fi
+    done < "$work/files"
+    while read -r path; do
+        mkdir -p "$(dirname "$path")" && cp -P "$work/stage$path" "$path" || fail "could not copy $path into place"
+    done < "$work/files"
+    if is_installed "$name"; then
+        sort "$state/$name/files" | comm -23 - "$work/files" | while read -r path; do rm -f "$path"; done
+    fi
+    mkdir -p "$state/$name"
+    cp "$work/PKGINFO" "$state/$name/PKGINFO"
+    cp "$work/files" "$state/$name/files"
+    rm -rf "$work"
+    trap - EXIT
+    echo "jpm: installed $name $version"
+}
+
+install_named() {
+    repo=$(repository)
+    [ -n "$repo" ] || fail "no repository set in $config"
+    work=$(mktemp -d /tmp/jpm.XXXXXX)
+    filename=$(field "$index" "$1" filename)
+    expected=$(field "$index" "$1" sha256)
+    echo "jpm: fetching $filename"
+    fetch "$repo/abi$(abi)/$filename" "$work/$filename" || { rm -rf "$work"; fail "could not fetch $filename"; }
+    actual=$(sha256sum "$work/$filename" | awk '{ print $1 }')
+    if [ "$actual" != "$expected" ]; then
+        rm -rf "$work"
+        fail "$filename is damaged or has changed, run 'jpm update'"
+    fi
+    package="$work/$filename"
+    (install_file "$package") || { rm -rf "$work"; exit 1; }
+    rm -rf "$work"
+}
+
+install() {
+    [ $# -gt 0 ] || fail "usage: jpm install PACKAGE..."
+    order=
+    for name in "$@"; do
+        case "$name" in
+            *.pkg.tar.gz) [ -r "$name" ] || fail "no file $name"; (install_file "$name") || exit 1 ;;
+            *)
+                [ -r "$index" ] || fail "no package list, run 'jpm update'"
+                visiting=
+                if is_installed "$name" && [ "$(installed_version "$name")" = "$(field "$index" "$name" pkgver)" ]; then
+                    echo "jpm: $name is already installed"
+                else
+                    resolve "$name"
+                fi
+                ;;
+        esac
+    done
+    for name in $order; do
+        install_named "$name"
+    done
+}
+
+remove() {
+    [ $# -gt 0 ] || fail "usage: jpm remove PACKAGE..."
+    for name in "$@"; do
+        is_installed "$name" || fail "$name is not installed"
+        for list in "$state"/*/PKGINFO; do
+            other=$(basename "$(dirname "$list")")
+            [ "$other" = "$name" ] && continue
+            case " $* " in *" $other "*) continue ;; esac
+            if field "$list" "$other" depend | grep -qx "$name"; then
+                fail "$other needs $name"
+            fi
+        done
+    done
+    for name in "$@"; do
+        while read -r path; do
+            rm -f "$path"
+            rmdir -p "$(dirname "$path")" 2>/dev/null
+        done < "$state/$name/files"
+        rm -rf "${state:?}/$name"
+        echo "jpm: removed $name"
+    done
+}
+
+upgrade() {
+    [ -r "$index" ] || fail "no package list, run 'jpm update'"
+    outdated=
+    for directory in "$state"/*/; do
+        name=$(basename "$directory")
+        is_installed "$name" || continue
+        latest=$(field "$index" "$name" pkgver)
+        [ -n "$latest" ] && [ "$latest" != "$(installed_version "$name")" ] && outdated="$outdated $name"
+    done
+    if [ -z "$outdated" ]; then
+        echo "jpm: everything is up to date"
+        return
+    fi
+    install $outdated
+}
+
+files() {
+    [ -n "${1:-}" ] || fail "usage: jpm files PACKAGE"
+    is_installed "$1" || fail "$1 is not installed"
+    cat "$state/$1/files"
+}
+
+command=${1:-}
+[ $# -gt 0 ] && shift
+case "$command" in
+    update) update ;;
+    list) list ;;
+    installed) installed ;;
+    search) search "$@" ;;
+    info) info "$@" ;;
+    install) install "$@" ;;
+    remove|uninstall) remove "$@" ;;
+    upgrade) upgrade ;;
+    files) files "$@" ;;
+    help|-h|--help) usage ;;
+    "") usage; exit 1 ;;
+    *) echo "jpm: unknown command $command" >&2; usage >&2; exit 1 ;;
+esac

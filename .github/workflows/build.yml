@@ -54,6 +54,7 @@ jobs:
           path: |
             jolt/build/dist/*.zip
             jolt/build/dist/*.tar
+            jolt/build/dist/*.tar.gz
 
       - name: Publish the release
         if: startsWith(github.ref, 'refs/tags/')
@@ -63,4 +64,4 @@ jobs:
         run: |
           prerelease=()
           if [[ $GITHUB_REF_NAME == *-* ]]; then prerelease=(--prerelease); fi
-          gh release create "$GITHUB_REF_NAME" build/dist/*.zip build/dist/*.tar --generate-notes "${prerelease[@]}"
+          gh release create "$GITHUB_REF_NAME" build/dist/*.zip build/dist/*.tar build/dist/*.tar.gz --generate-notes "${prerelease[@]}"

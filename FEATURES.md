@@ -61,6 +61,7 @@
 - Colour and bold rendering; classic theme built in, others as kitty-format files in /usr/share/themes (Solarized, Gruvbox, One, Dracula, Nord), dark and light pairs
 - Font choice: TrueType from /usr/share/fonts via AddFontResource (DejaVu Sans Mono, Liberation Mono) or CE fonts by name
 - Bitmap fonts drawn by JoLT: Spleen (5x8 to 12x24) and Terminus (6x12 to 12x24), BDF converted at build time to 1-bit glyph sheets (.jbf), one BitBlt per cell, Courier New for missing glyphs
+- Box drawing (U+2500-257F) and block elements (U+2580-259F) drawn by JoLT for every TrueType and CE face, and for bitmap fonts that lack them, so lines meet at cell edges and fonts without these glyphs still draw terminal UIs
 - Ctrl+Shift+F toggles full screen
 - ncurses with built-in terminfo fallbacks, TERM=xterm-256color
 - ptys: /dev/ptmx and /dev/pts/0-3; line discipline shared by the console and ptys (common/tty.c); controlling terminals, TIOCSCTTY, hangup on master close; /proc/PID/fd links

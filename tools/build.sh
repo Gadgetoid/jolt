@@ -15,4 +15,6 @@ cmake -S . -B build/ce -G Ninja -DCMAKE_TOOLCHAIN_FILE="$tools/cmake/jornada-ce.
 cmake --build build/ce
 cc -std=c11 -Wall -Wextra -Werror worker/path.c tests/path-test.c -Iworker -o build/path-test
 build/path-test
+cc -std=c11 -Wall -Wextra -Werror terminal/boxdraw.c tests/boxdraw-test.c -Iterminal -o build/boxdraw-test
+build/boxdraw-test
 bash tools/package.sh

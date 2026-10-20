@@ -12,6 +12,7 @@
 #include "tty.h"
 #include "fonts.h"
 #include "bitmapfont.h"
+#include "boxdraw.h"
 #include "canvas.h"
 #include "optional.h"
 
@@ -192,10 +193,22 @@ static void resolve_cell(int row, int column, struct styled_cell *styled, struct
     resolved->style = (WORD)(styled->style & (STYLE_BOLD | STYLE_UNDERLINE));
 }
 
+static void render_drawn_cell(int row, int column, const struct canvas_cell *cell) {
+    RECT bounds = cell_bounds(row, row + 1, column, column + 1);
+    if (bounds.right > view.canvas.width || bounds.bottom > view.canvas.height) return;
+    boxdraw_render(canvas_pixel(&view.canvas, bounds.left, bounds.top), view.canvas.pitch, view.cell_width,
+        view.cell_height, bounds.left, bounds.top, cell->character, (cell->style & STYLE_BOLD) || view.settings.heavy,
+        canvas_colour(cell->foreground), canvas_colour(cell->background), (cell->style & STYLE_UNDERLINE) != 0);
+}
+
 static void render_bitmap_cell(int row, int column, const struct styled_cell *styled, const struct canvas_cell *cell) {
     RECT bounds = cell_bounds(row, row + 1, column, column + 1);
     if (bounds.right > view.canvas.width || bounds.bottom > view.canvas.height) return;
     int index = bitmap_font_index(&view.bitmap, cell->character);
+    if (index < 0 && boxdraw_covers(cell->character)) {
+        render_drawn_cell(row, column, cell);
+        return;
+    }
     bitmap_font_render(&view.bitmap, canvas_pixel(&view.canvas, bounds.left, bounds.top), view.canvas.pitch, index,
         (cell->style & STYLE_BOLD) || view.settings.heavy, canvas_colour(cell->foreground), canvas_colour(cell->background),
         (cell->style & STYLE_UNDERLINE) != 0);
@@ -216,11 +229,16 @@ static void render_row(int row, int first_column, int last_column, const INT *ad
             if (changed) render_bitmap_cell(row, column, &styled, &resolved);
             continue;
         }
-        if (run_length && (!changed || !same_style(&styled, &run_style) || run_length == RUN_LIMIT)) {
+        int drawn = boxdraw_covers(resolved.character);
+        if (run_length && (!changed || drawn || !same_style(&styled, &run_style) || run_length == RUN_LIMIT)) {
             draw_run(view.canvas.dc, row, run_start, text, run_length, &run_style, advances);
             run_length = 0;
         }
         if (!changed) continue;
+        if (drawn) {
+            render_drawn_cell(row, column, &resolved);
+            continue;
+        }
         if (!run_length) {
             run_start = column;
             run_style = styled;

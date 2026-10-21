@@ -7,6 +7,7 @@
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include "sha256.h"
@@ -21,6 +22,8 @@
 #define COPY_CAPACITY 8192
 #define HEX_DIGEST (SHA256_BLOCK_SIZE * 2 + 1)
 #define MAX_ARGUMENTS 256
+#define CURL_WRITE_ERROR 23
+#define RECORD_FILES 3
 
 struct entry {
     char *key, *value;
@@ -72,6 +75,16 @@ static void fail(const char *format, ...) {
     va_end(arguments);
     cleanup();
     exit(1);
+}
+
+static const char *write_problem(void) {
+    return errno == ENOSPC ? "the card is full" : strerror(errno);
+}
+
+static const char *fetch_problem(int result) {
+    if (result == CURL_WRITE_ERROR) return ": could not save it, is the card full?";
+    if (result < 0 && errno == ENOSPC) return ": the card is full";
+    return "";
 }
 
 static void *allocate(size_t size) {
@@ -477,7 +490,8 @@ static char *unpack(const char *package, const char *stage, struct path_list *fi
         snprintf(destination, sizeof destination, "%s/%s", stage, relative);
         make_parents(destination);
         FILE *output = fopen(destination, "wb");
-        if (!output || fwrite(data, 1, size, output) != size || fclose(output)) fail("could not unpack %s", relative);
+        if (!output || fwrite(data, 1, size, output) != size || fclose(output))
+            fail("could not unpack %s: %s", relative, write_problem());
         chmod(destination, (mode_t)octal((char *)header + 100, 8) & 0777);
         free(data);
         char installed[PATH_CAPACITY];
@@ -565,9 +579,17 @@ static int changed_since_install(const struct sums *sums, const char *path) {
 
 static void write_lines(const char *path, const struct path_list *list) {
     FILE *file = fopen(path, "w");
-    if (!file) fail("could not write %s", path);
+    if (!file) fail("could not write %s: %s", path, write_problem());
     for (int index = 0; index < list->count; index++) fprintf(file, "%s\n", list->paths[index]);
-    fclose(file);
+    if (fclose(file)) fail("could not write %s: %s", path, write_problem());
+}
+
+static void require_record_space(const char *name, const struct path_list *files, const char *info) {
+    struct statvfs status;
+    if (statvfs("/", &status)) return;
+    unsigned long long needed = strlen(info) + RECORD_FILES * (unsigned long long)status.f_bsize;
+    for (int index = 0; index < files->count; index++) needed += 2 * strlen(files->paths[index]) + HEX_DIGEST + 3;
+    if ((unsigned long long)status.f_bavail * status.f_frsize < needed) fail("could not install %s: the card is full", name);
 }
 
 static void move_into_place(const char *stage, const char *path) {
@@ -576,7 +598,7 @@ static void move_into_place(const char *stage, const char *path) {
     make_parents(path);
     if (rename(source, path) == 0) return;
     struct stat status;
-    if (copy_file(source, path) || stat(source, &status)) fail("could not copy %s into place", path);
+    if (copy_file(source, path) || stat(source, &status)) fail("could not copy %s into place: %s", path, write_problem());
     chmod(path, status.st_mode & 0777);
 }
 
@@ -615,6 +637,7 @@ static void install_file(const char *package_path) {
         sha256_file(staged, digests[index]);
     }
     struct sums old_sums = read_sums(name);
+    require_record_space(name, &files, info_copy);
     for (int index = 0; index < files.count; index++) {
         const char *path = files.paths[index];
         char current[HEX_DIGEST];
@@ -622,7 +645,7 @@ static void install_file(const char *package_path) {
             char kept[PATH_CAPACITY], staged[PATH_CAPACITY];
             snprintf(kept, sizeof kept, "%s.jpmnew", path);
             snprintf(staged, sizeof staged, "%s%s", stage, path);
-            if (rename(staged, kept) && copy_file(staged, kept)) fail("could not write %s", kept);
+            if (rename(staged, kept) && copy_file(staged, kept)) fail("could not write %s: %s", kept, write_problem());
             printf("jpm: kept your changes to %s, the new version is %s\n", path, kept);
             continue;
         }
@@ -641,13 +664,13 @@ static void install_file(const char *package_path) {
     mkdir(directory, 0755);
     char *info_path = state_path(name, "PKGINFO");
     FILE *file = fopen(info_path, "w");
-    if (!file || fputs(info_copy, file) < 0 || fclose(file)) fail("could not record %s", name);
+    if (!file || fputs(info_copy, file) < 0 || fclose(file)) fail("could not record %s: %s", name, write_problem());
     write_lines(list_path, &files);
     char *sums_path = state_path(name, "sha256sums");
     file = fopen(sums_path, "w");
-    if (!file) fail("could not record %s", name);
+    if (!file) fail("could not record %s: %s", name, write_problem());
     for (int index = 0; index < files.count; index++) fprintf(file, "%s  %s\n", digests[index], files.paths[index]);
-    fclose(file);
+    if (fclose(file)) fail("could not record %s: %s", name, write_problem());
     printf("jpm: installed %s %s\n", name, version);
     release_temporary(STAGE);
 }
@@ -689,10 +712,14 @@ static void install_from_repository(struct catalogue *catalogue, struct path_lis
     }
     if (is_remote(repo)) {
         printf("jpm: fetching%s\n", names);
-        if (download(first_url, pairs, order->count, 1)) fail("could not fetch%s", names);
+        int result = download(first_url, pairs, order->count, 1);
+        if (result) fail("could not fetch%s%s", names, fetch_problem(result));
     } else {
-        for (int index = 0; index < order->count; index++)
-            if (copy_file(pairs[index * 2 + 1], pairs[index * 2])) fail("no file %s", pairs[index * 2 + 1]);
+        for (int index = 0; index < order->count; index++) {
+            if (!copy_file(pairs[index * 2 + 1], pairs[index * 2])) continue;
+            if (!exists(pairs[index * 2 + 1])) fail("no file %s", pairs[index * 2 + 1]);
+            fail("could not copy %s%s", pairs[index * 2 + 1], fetch_problem(-1));
+        }
     }
     for (int index = 0; index < order->count; index++) {
         struct package *package = find(catalogue, order->paths[index]);
@@ -783,11 +810,13 @@ static void command_update(void) {
     mkdir("/var", 0755);
     mkdir("/var/lib", 0755);
     mkdir(STATE, 0755);
-    if (fetch(url, INDEX ".new")) {
+    int result = fetch(url, INDEX ".new");
+    if (result) {
+        const char *problem = fetch_problem(result);
         unlink(INDEX ".new");
-        fail("could not fetch %s", url);
+        fail("could not fetch %s%s", url, problem);
     }
-    if (rename(INDEX ".new", INDEX)) fail("could not save the package list");
+    if (rename(INDEX ".new", INDEX)) fail("could not save the package list: %s", write_problem());
     struct catalogue catalogue = load_index();
     if (catalogue.count == 1) printf("jpm: 1 package available\n");
     else printf("jpm: %d packages available\n", catalogue.count);

@@ -7,7 +7,7 @@ source_dir="$output/src/bash-5.3"
 (
     cd "$source_dir"
     sed -i.orig 's|^/\* #define SYS_BASHRC "/etc/bash.bashrc" \*/|#define SYS_BASHRC "/etc/bash.bashrc"|' config-top.h
-    env "${APP_CONFIGURE_ENVIRONMENT[@]}" CFLAGS=-Os PKG_CONFIG=false CC_FOR_BUILD=cc \
+    env "${APP_CONFIGURE_ENVIRONMENT[@]}" CFLAGS=-Os PKG_CONFIG=false CC_FOR_BUILD="cc -std=gnu17" \
         bash_cv_getcwd_malloc=yes bash_cv_job_control_missing=present bash_cv_sys_named_pipes=present \
         bash_cv_func_sigsetjmp=present bash_cv_printf_a_format=yes bash_cv_unusable_rtsigs=no \
         ./configure --host=arm-linux-gnueabi --prefix=/usr --sysconfdir=/etc \

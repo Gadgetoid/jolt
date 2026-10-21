@@ -101,6 +101,8 @@
 - "cannot reserve guest memory" on Jornadas with an add-on that loads `_oredll.dll` at a fixed 0x00be0000-0x00c01000: the reservation started 64 KiB below the guest image for no reason, and now starts at 0x00c10000. The worker writes `JoLT\memory.txt` when the reservation fails
 - Vim sometimes drew a typed character only after the next key: with a 1 ms clock, its zero-wait typeahead check could compute -1 ms and block in select until the next key (`apps/vim/zero-wait.patch`). `vim-typing` types 240 keys at random speeds and fails if any takes over 400 ms to reach the screen
 - Command substitutions with pipelines (`$(echo a | cat)`) sometimes came back empty: the supervisor kept a stale handle when a process slot was reused, saw the old worker's exit and closed the new process's files
+- Out of memory in links after a few large pages (700 KB CNN articles), even with plenty of RAM free: each process had about 3.75 MB for mmap, which musl's malloc uses for nearly everything, and links' default cache was 4 MB. The guest range now extends towards the lowest DLL (15 MB on the emulator, 7.9 MB before), mmap also uses the space above the stack and the idle brk gap, mremap grows in place, and links caches 1 MB and 2 formatted pages (`apps/links/cache.patch`)
+- munmap that split a mapping when the range table was full dropped the tail, leaking its pages; it now fails with ENOMEM
 
 ## Wishlist
 

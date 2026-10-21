@@ -9,7 +9,6 @@
 #define MAP_FILE L"memory.txt"
 #define SLOT_START 0x00010000UL
 #define SLOT_END 0x02000000UL
-#define SLOT_MASK 0x01ffffffUL
 #define MODULE_LIMIT 96
 #define LINE_CAPACITY 160
 #define NAME_CAPACITY 40

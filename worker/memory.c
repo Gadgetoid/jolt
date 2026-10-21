@@ -4,6 +4,10 @@
 #include "syscalls.h"
 #include "optional.h"
 
+#define HEAP_HEADROOM 0x00040000UL
+
+static DWORD reserved_limit;
+
 DWORD page_round_up(DWORD value) {
     return (value + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
 }
@@ -14,7 +18,7 @@ static DWORD page_round_down(DWORD value) {
 
 static int range_allows(DWORD pointer, DWORD length, DWORD permission) {
     if (!length) return 1;
-    if (pointer < GUEST_START || pointer >= GUEST_LIMIT || length > GUEST_LIMIT - pointer) return 0;
+    if (pointer < GUEST_START || pointer >= state.guest_limit || length > state.guest_limit - pointer) return 0;
     DWORD position = pointer, end = pointer + length;
     while (position < end) {
         const struct guest_range *covering = NULL;
@@ -93,7 +97,7 @@ static void decommit_pages(DWORD start, DWORD end) {
 
 int commit_pages(DWORD start, DWORD length) {
     DWORD first = page_round_down(start), end = page_round_up(start + length), count = (end - first) / PAGE_SIZE;
-    if (first < GUEST_START || end > GUEST_LIMIT || end <= first) return 0;
+    if (first < GUEST_START || end > state.guest_limit || end <= first) return 0;
     if (state.page_count + count > MAX_PAGES) return 0;
     for (DWORD address = first; address < end; address += PAGE_SIZE)
         if (page_committed(address)) return 0;
@@ -107,7 +111,7 @@ typedef BOOL (WINAPI *virtual_copy_function)(LPVOID, LPVOID, DWORD, DWORD);
 
 int alias_pages(DWORD start, DWORD length, const void *source) {
     DWORD first = page_round_down(start), end = page_round_up(start + length), count = (end - first) / PAGE_SIZE;
-    if (first != start || first < GUEST_START || end > GUEST_LIMIT || end <= first) return 0;
+    if (first != start || first < GUEST_START || end > state.guest_limit || end <= first) return 0;
     if (((DWORD)source & (PAGE_SIZE - 1)) || state.page_count + count > MAX_PAGES) return 0;
     for (DWORD address = first; address < end; address += PAGE_SIZE)
         if (page_committed(address)) return 0;
@@ -120,7 +124,7 @@ int alias_pages(DWORD start, DWORD length, const void *source) {
 
 int add_range(DWORD start, DWORD length, DWORD flags) {
     if (!length || state.range_count == MAX_RANGES) return 0;
-    if (start < GUEST_START || start >= GUEST_LIMIT || length > GUEST_LIMIT - start) return 0;
+    if (start < GUEST_START || start >= state.guest_limit || length > state.guest_limit - start) return 0;
     for (DWORD index = 0; index < state.range_count; index++) {
         const struct guest_range *range = &state.ranges[index];
         if (start < range->end && start + length > range->start) return 0;
@@ -149,7 +153,7 @@ int protect_range(const struct guest_range *range) {
 }
 
 void release_memory(void) {
-    decommit_pages(GUEST_START, GUEST_LIMIT);
+    decommit_pages(GUEST_START, state.guest_limit);
     state.range_count = 0;
     state.heap_start = state.heap_break = state.heap_end = 0;
     state.heap_range = -1;
@@ -191,20 +195,92 @@ LONG sys_brk(const DWORD *arguments) {
     return (LONG)address;
 }
 
-static DWORD find_mapping_space(DWORD size) {
-    DWORD candidate = MMAP_START;
+static DWORD lowest_allocation_above(DWORD address) {
+    while (address < GUEST_CEILING) {
+        MEMORY_BASIC_INFORMATION area;
+        if (!VirtualQuery((void *)address, &area, sizeof area) || !area.RegionSize || area.State != MEM_FREE) return address;
+        address = ((DWORD)area.BaseAddress & SLOT_MASK) + area.RegionSize;
+    }
+    return GUEST_CEILING;
+}
+
+DWORD guest_reserve_ceiling(void) {
+    DWORD free_end = lowest_allocation_above(GUEST_RESERVE_LIMIT);
+    if (free_end < GUEST_RESERVE_LIMIT + DLL_MARGIN) return GUEST_RESERVE_LIMIT;
+    DWORD limit = (free_end - DLL_MARGIN) & ~(RESERVE_GRANULARITY - 1);
+    return limit > GUEST_RESERVE_LIMIT ? limit : GUEST_RESERVE_LIMIT;
+}
+
+int guest_reserve(DWORD limit) {
+    if (VirtualAlloc((void *)GUEST_RESERVE_BASE, limit - GUEST_RESERVE_BASE, MEM_RESERVE, PAGE_NOACCESS) !=
+        (void *)GUEST_RESERVE_BASE) return 0;
+    reserved_limit = limit;
+    state.guest_limit = limit;
+    return 1;
+}
+
+int guest_reserve_at_least(DWORD limit) {
+    if (limit > reserved_limit) {
+        DWORD previous = reserved_limit;
+        VirtualFree((void *)GUEST_RESERVE_BASE, 0, MEM_RELEASE);
+        if (!guest_reserve(limit)) {
+            guest_reserve(previous);
+            return 0;
+        }
+    }
+    state.guest_limit = reserved_limit;
+    return 1;
+}
+
+static int space_free(DWORD start, DWORD end) {
+    for (DWORD index = 0; index < state.range_count; index++) {
+        const struct guest_range *range = &state.ranges[index];
+        if (start < range->end && end > range->start) return 0;
+    }
+    return 1;
+}
+
+static DWORD find_space_upward(DWORD low, DWORD high, DWORD size) {
+    DWORD candidate = low;
     for (DWORD index = 0; index < state.range_count; index++) {
         const struct guest_range *range = &state.ranges[index];
         if (candidate >= range->end || candidate + size <= range->start) continue;
         candidate = page_round_up(range->end);
-        if (candidate > GATE_PAGE || size > GATE_PAGE - candidate) return 0;
+        index = (DWORD)-1;
+    }
+    return candidate <= high && size <= high - candidate ? candidate : 0;
+}
+
+static DWORD find_space_downward(DWORD low, DWORD high, DWORD size) {
+    if (high <= low || size > high - low) return 0;
+    DWORD candidate = high - size;
+    for (DWORD index = 0; index < state.range_count; index++) {
+        const struct guest_range *range = &state.ranges[index];
+        if (candidate >= range->end || candidate + size <= range->start) continue;
+        DWORD below = page_round_down(range->start);
+        if (below < low || size > below - low) return 0;
+        candidate = below - size;
         index = (DWORD)-1;
     }
     return candidate;
 }
 
+static DWORD heap_gap_start(void) {
+    DWORD heap_top = state.heap_end > state.heap_start ? state.heap_end : state.heap_start;
+    if (!heap_top) return MMAP_START;
+    heap_top = page_round_up(heap_top) + HEAP_HEADROOM;
+    return heap_top < MMAP_START ? heap_top : MMAP_START;
+}
+
+static DWORD find_mapping_space(DWORD size) {
+    DWORD address = find_space_upward(MMAP_START, GATE_PAGE, size);
+    if (!address && state.guest_limit > STACK_LIMIT) address = find_space_upward(STACK_LIMIT, state.guest_limit, size);
+    if (!address) address = find_space_downward(heap_gap_start(), MMAP_START, size);
+    return address;
+}
+
 static int is_mapping(const struct guest_range *range) {
-    return range->start >= MMAP_START && range->start < GATE_PAGE && range->flags == (RANGE_READ | RANGE_WRITE);
+    return (range->flags & RANGE_MAPPING) != 0;
 }
 
 static int add_mapping(DWORD start, DWORD end) {
@@ -228,7 +304,7 @@ static int add_mapping(DWORD start, DWORD end) {
         state.ranges[after].start = start;
         return 1;
     }
-    return add_range(start, end - start, RANGE_READ | RANGE_WRITE);
+    return add_range(start, end - start, RANGE_READ | RANGE_WRITE | RANGE_MAPPING);
 }
 
 LONG sys_mmap2(const DWORD *arguments) {
@@ -236,7 +312,7 @@ LONG sys_mmap2(const DWORD *arguments) {
     if ((flags & LINUX_MAP_FIXED) || !(flags & LINUX_MAP_ANONYMOUS) || fd != 0xffffffffUL) return error(LINUX_ENODEV);
     if (protection & ~(DWORD)(LINUX_PROT_READ | LINUX_PROT_WRITE)) return error(LINUX_ENODEV);
     DWORD size = page_round_up(length);
-    if (!size || size > GATE_PAGE - MMAP_START) return error(LINUX_ENOMEM);
+    if (!size || size > state.guest_limit - GUEST_START) return error(LINUX_ENOMEM);
     DWORD address = find_mapping_space(size);
     if (!address || !commit_pages(address, size)) return error(LINUX_ENOMEM);
     if (!add_mapping(address, address + size)) {
@@ -250,6 +326,8 @@ static int unmap_from_range(DWORD index, DWORD start, DWORD end) {
     struct guest_range *range = &state.ranges[index];
     DWORD cut_start = start > range->start ? start : range->start;
     DWORD cut_end = end < range->end ? end : range->end;
+    int splits = cut_start > range->start && cut_end < range->end;
+    if (splits && state.range_count == MAX_RANGES) return -1;
     decommit_pages(cut_start, cut_end);
     if (cut_start == range->start && cut_end == range->end) {
         remove_range(index);
@@ -262,30 +340,60 @@ static int unmap_from_range(DWORD index, DWORD start, DWORD end) {
     } else {
         struct guest_range tail = { cut_end, range->end, range->flags };
         range->end = cut_start;
-        if (state.range_count < MAX_RANGES) state.ranges[state.range_count++] = tail;
+        state.ranges[state.range_count++] = tail;
     }
     return 0;
 }
 
-LONG sys_munmap(const DWORD *arguments) {
-    DWORD address = arguments[0], size = page_round_up(arguments[1]);
-    if ((address & (PAGE_SIZE - 1)) || !size) return error(LINUX_EINVAL);
-    if (address < MMAP_START || address >= GATE_PAGE || size > GATE_PAGE - address) return error(LINUX_EINVAL);
-    DWORD end = address + size;
+static LONG unmap(DWORD address, DWORD end) {
     for (DWORD index = 0; index < state.range_count; index++) {
         const struct guest_range *range = &state.ranges[index];
-        int mapping = range->start >= MMAP_START && range->start < GATE_PAGE;
-        if (!mapping || end <= range->start || address >= range->end) continue;
-        if (unmap_from_range(index, address, end)) index = (DWORD)-1;
+        if (!is_mapping(range) || end <= range->start || address >= range->end) continue;
+        int result = unmap_from_range(index, address, end);
+        if (result < 0) return error(LINUX_ENOMEM);
+        if (result) index = (DWORD)-1;
     }
     return 0;
+}
+
+static int mappable(DWORD address, DWORD size) {
+    return address >= GUEST_START && address < state.guest_limit && size <= state.guest_limit - address;
+}
+
+LONG sys_munmap(const DWORD *arguments) {
+    DWORD address = arguments[0], size = page_round_up(arguments[1]);
+    if ((address & (PAGE_SIZE - 1)) || !size || !mappable(address, size)) return error(LINUX_EINVAL);
+    return unmap(address, address + size);
 }
 
 LONG sys_mprotect(const DWORD *arguments) {
     return guest_readable(arguments[0], arguments[1]) ? 0 : error(LINUX_ENOMEM);
 }
 
+static int mapped(DWORD start, DWORD end) {
+    for (DWORD index = 0; index < state.range_count; index++) {
+        const struct guest_range *range = &state.ranges[index];
+        if (is_mapping(range) && range->start <= start && range->end >= end) return 1;
+    }
+    return 0;
+}
+
 LONG sys_mremap(const DWORD *arguments) {
-    (void)arguments;
-    return error(LINUX_ENOMEM);
+    DWORD address = arguments[0], old_size = page_round_up(arguments[1]), new_size = page_round_up(arguments[2]);
+    if ((address & (PAGE_SIZE - 1)) || !old_size || !new_size || !mappable(address, old_size)) return error(LINUX_EINVAL);
+    DWORD end = address + old_size;
+    if (!mapped(address, end)) return error(LINUX_EFAULT);
+    if (new_size == old_size) return (LONG)address;
+    if (new_size < old_size) {
+        LONG result = unmap(address + new_size, end);
+        return result ? result : (LONG)address;
+    }
+    if (!mappable(address, new_size)) return error(LINUX_ENOMEM);
+    DWORD new_end = address + new_size;
+    if (!space_free(end, new_end) || !commit_pages(end, new_end - end)) return error(LINUX_ENOMEM);
+    if (!add_mapping(end, new_end)) {
+        decommit_pages(end, new_end);
+        return error(LINUX_ENOMEM);
+    }
+    return (LONG)address;
 }

@@ -1,0 +1,26 @@
+--- a/default.c
++++ b/default.c
+@@ -2122,8 +2122,8 @@
+ unsigned char bind_ipv6_address[INET6_ADDRSTRLEN] = "";
+ int download_utime = 0;
+ 
+-int max_format_cache_entries = 5;
+-int memory_cache_size = 4194304;
++int max_format_cache_entries = 2;
++int memory_cache_size = 1048576;
+ int image_cache_size = 1048576;
+ int font_cache_size = 2097152;
+ int aggressive_cache = 1;
+--- a/menu.c
++++ b/menu.c
+@@ -1883,8 +1883,8 @@
+ 
+ 	max_cookie_age = 0;
+ 
+-	max_format_cache_entries = 5;
+-	memory_cache_size = 4194304;
++	max_format_cache_entries = 2;
++	memory_cache_size = 1048576;
+ 	image_cache_size = 1048576;
+ 	font_cache_size = 2097152;
+ 	aggressive_cache = 1;

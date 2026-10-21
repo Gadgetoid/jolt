@@ -425,11 +425,11 @@ static LONG render_jolt(char *buffer, DWORD capacity) {
     return snprintf(buffer, capacity,
         "version: %s\nabi: %d\nce_version: %lu.%02lu\nce_build: %lu\noem: %s\nplatform: %s\ndevice: %s\nowner: %s\n"
         "display: %dx%dx%d\nstore_kb: %lu\nstore_free_kb: %lu\ncard_kb: %lu\ncard_free_kb: %lu\n"
-        "terminal: %ux%u\n",
+        "terminal: %ux%u\nguest_kb: %lu\n",
         JOLT_VERSION, JOLT_ABI_VERSION, version.dwMajorVersion, version.dwMinorVersion, version.dwBuildNumber, oem, platform,
         device, owner, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), depth,
         store.dwStoreSize / 1024, store.dwFreeSize / 1024, card_total_kb, card_free_kb,
-        kernel()->ttys[JOLT_CONSOLE].columns, kernel()->ttys[JOLT_CONSOLE].rows);
+        kernel()->ttys[JOLT_CONSOLE].columns, kernel()->ttys[JOLT_CONSOLE].rows, (state.guest_limit - GUEST_START) / 1024);
 }
 
 static LONG render_system(enum proc_file file, char *buffer, DWORD capacity) {

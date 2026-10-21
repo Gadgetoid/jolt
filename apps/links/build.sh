@@ -4,6 +4,7 @@ source "$(dirname "$0")/../common.sh"
 
 unpack_source links-2.30.tar.bz2 links-2.30
 source_dir="$output/src/links-2.30"
+patch -d "$source_dir" -p1 < "$(dirname "$0")/cache.patch" > /dev/null
 (
     cd "$source_dir"
     env "${APP_CONFIGURE_ENVIRONMENT[@]}" ./configure --host=arm-linux-gnueabi --disable-graphics --without-x \

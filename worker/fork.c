@@ -164,6 +164,7 @@ int fork_child(void) {
     if (!source) return 0;
     DWORD count = 0;
     int success = ReadProcessMemory(source, &state, &state, sizeof state, &count) && count == sizeof state;
+    success = success && guest_reserve_at_least(state.guest_limit);
     DWORD pages[PAGE_WORDS];
     memcpy(pages, state.committed, sizeof pages);
     memset(state.committed, 0, sizeof state.committed);

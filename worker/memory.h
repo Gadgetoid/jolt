@@ -12,3 +12,6 @@ int alias_pages(DWORD start, DWORD length, const void *source);
 int protect_range(const struct guest_range *range);
 void release_memory(void);
 DWORD page_round_up(DWORD value);
+DWORD guest_reserve_ceiling(void);
+int guest_reserve(DWORD limit);
+int guest_reserve_at_least(DWORD limit);

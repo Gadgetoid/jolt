@@ -143,7 +143,7 @@ static DWORD push_strings(DWORD *cursor, DWORD limit, char **strings, DWORD *poi
 static DWORD build_stack(const char *path, char **arguments, char **environment, const struct loaded_image *loaded) {
     if (!add_range(STACK_BASE, STACK_SIZE, RANGE_READ | RANGE_WRITE) || !commit_pages(STACK_BASE, STACK_SIZE)) return 0;
     DWORD limit = STACK_BASE + STACK_RESERVE;
-    DWORD cursor = GUEST_LIMIT - RANDOM_BYTES;
+    DWORD cursor = STACK_LIMIT - RANDOM_BYTES;
     DWORD random = cursor;
     random_fill_fast((BYTE *)random, RANDOM_BYTES);
     DWORD execfn = push_string(&cursor, limit, path);

@@ -7,24 +7,29 @@
 #define GUEST_START 0x00c10000UL
 #define GUEST_RESERVE_BASE GUEST_START
 #define GUEST_RESERVE_LIMIT 0x01400000UL
+#define GUEST_CEILING 0x02000000UL
+#define DLL_MARGIN 0x00200000UL
+#define RESERVE_GRANULARITY 0x00010000UL
+#define SLOT_MASK 0x01ffffffUL
 #define IMAGE_LIMIT 0x01000000UL
 #define MMAP_START 0x01000000UL
 #define GATE_PAGE 0x013c0000UL
 #define STACK_BASE 0x013d0000UL
 #define STACK_SIZE 0x00010000UL
-#define GUEST_LIMIT 0x013e0000UL
+#define STACK_LIMIT 0x013e0000UL
 #define PAGE_SIZE 4096UL
 #define FNV_OFFSET 2166136261UL
 #define FNV_PRIME 16777619UL
 #define MAX_RANGES 512
-#define MAX_PAGES 2000
+#define MAX_PAGES ((GUEST_CEILING - GUEST_START) / PAGE_SIZE)
 #define MAX_SAVED_SIGNALS 8
-#define PAGE_WORDS (((GUEST_LIMIT - GUEST_START) / PAGE_SIZE + 31UL) / 32UL)
+#define PAGE_WORDS ((MAX_PAGES + 31UL) / 32UL)
 #define IO_LIMIT 0x100000UL
 
 #define RANGE_EXECUTE 1
 #define RANGE_WRITE 2
 #define RANGE_READ 4
+#define RANGE_MAPPING 8
 
 enum exit_request { EXIT_NONE, EXIT_PROCESS, EXIT_EXEC };
 
@@ -49,6 +54,7 @@ struct worker_state {
     DWORD range_count;
     DWORD committed[PAGE_WORDS];
     DWORD page_count;
+    DWORD guest_limit;
     DWORD heap_start, heap_break, heap_end;
     int heap_range;
     DWORD blocked;

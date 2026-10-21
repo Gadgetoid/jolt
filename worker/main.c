@@ -12,7 +12,6 @@
 #define START_ARGUMENT_LIMIT 63
 #define EXIT_STATUS_NOT_STARTED LINUX_WAIT_EXITED(127)
 #define TRACE_LINE_CAPACITY 256
-#define SLOT_MASK 0x01ffffffUL
 
 struct worker_state state;
 int slot = -1;
@@ -83,7 +82,7 @@ static void diagnose(const char *format, ...) {
 }
 
 static int probe_commit(void) {
-    DWORD probe = GUEST_LIMIT - PAGE_SIZE;
+    DWORD probe = STACK_LIMIT - PAGE_SIZE;
     if (VirtualAlloc((void *)probe, PAGE_SIZE, MEM_COMMIT, PAGE_READWRITE) != (void *)probe) return 0;
     VirtualFree((void *)probe, PAGE_SIZE, MEM_DECOMMIT);
     return 1;
@@ -95,8 +94,7 @@ static DWORD slot_address(const void *address) {
 
 static int guest_layout_available(int report, const WCHAR *folder) {
     volatile BYTE stack_probe = 0;
-    if (VirtualAlloc((void *)GUEST_RESERVE_BASE, GUEST_RESERVE_LIMIT - GUEST_RESERVE_BASE, MEM_RESERVE, PAGE_NOACCESS) !=
-        (void *)GUEST_RESERVE_BASE) {
+    if (!guest_reserve(guest_reserve_ceiling()) && !guest_reserve(GUEST_RESERVE_LIMIT)) {
         MEMORY_BASIC_INFORMATION area;
         memset(&area, 0, sizeof area);
         VirtualQuery((void *)GUEST_RESERVE_BASE, &area, sizeof area);
@@ -114,7 +112,7 @@ static int guest_layout_available(int report, const WCHAR *folder) {
         return 0;
     }
     if (!probe_commit()) {
-        if (report) diagnose("worker: cannot commit guest memory at %08lx (error %lu)", GUEST_LIMIT - PAGE_SIZE, GetLastError());
+        if (report) diagnose("worker: cannot commit guest memory at %08lx (error %lu)", STACK_LIMIT - PAGE_SIZE, GetLastError());
         return 0;
     }
     return 1;

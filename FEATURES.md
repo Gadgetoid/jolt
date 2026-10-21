@@ -35,7 +35,7 @@
 - MicroPython 1.29 UNIX port (no threads, FFI or SSL)
 - dvtm 0.15 (narrow ncurses; dvtm and dvtm-256color terminfo built into the ncurses fallbacks)
 - `jpm` package manager (C, one process apart from curl and gzip): Arch-style `.pkg.tar.gz` with `.PKGINFO`, sha256-checked index per ABI, dependency order, file ownership and conflict checks, refuses paths outside the package by reading tar headers itself, resumes TLS sessions and fetches all packages in one connection. Packages from gadgetoid.github.io/jolt-packages, built with the `jolt-sdk` release asset
-- sfeed 2.4 with sfeed_curses, behind a `feeds` command; articles through links, `y` copies to /dev/clipboard
+- sfeed 2.4 with sfeed_curses, behind a `feeds` command; articles through links, `y` copies to /dev/clipboard. sfeed_html writes a page for links, sfeed_gopher writes Gopher menus to serve with `geomyidae` from jpm
 - popen, system and posix_spawn (musl's __clone forks for CLONE_VFORK)
 - BusyBox xargs -P
 
@@ -133,6 +133,7 @@
 
 - Faster fork setup (spare hand-off, about 20 ms)
 - Workers exit when JoLT-Term dies; a watchdog
+- Emulate `MSG_PEEK`: CE 3.0 Winsock rejects it (EOPNOTSUPP) on TCP and UDP despite the SDK docs; affects busybox udpsvd and inetd UDP services, and geomyidae (patched in jolt-packages). Stash peeked data on the socket description, TCP first
 
 ### SHARP Brain support
 

@@ -5,6 +5,9 @@ printf '%s\n' 'sfeedpath=/tmp/feeds' 'feeds() {' '	feed local http://127.0.0.1:8
 sfeed_update /tmp/sfeedrc; echo update $?
 sfeed_plain /tmp/feeds/local
 sfeed_content /tmp/feeds/local | cat
+sfeed_html /tmp/feeds/local | grep -c 'JoLT feed entry' | sed 's/^/html /'
+mkdir -p /tmp/gopher/feeds && cd /tmp/gopher/feeds && SFEED_GOPHER_PATH=/feeds/ SFEED_GOPHER_PORT=7070 sfeed_gopher /tmp/feeds/local /tmp/feeds/other; cd /
+ls /tmp/gopher/feeds | tr '\n' ' ' | sed 's/^/gophermaps /'; echo
 echo piped | awk '{ print | "cat" }'
 lua -e 'os.execute("echo executed")'
 lua -e 'print(io.popen("echo popened"):read())'

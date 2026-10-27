@@ -141,7 +141,7 @@ Smaller fonts fit more on screen. At 16 px the full screen is 79x15. At 12 px it
 
 ### Fonts
 
-JoLT uses CE's Courier New unless you pick another fixed-width font. It comes with DejaVu Sans Mono and Liberation Mono:
+JoLT uses CE's Courier New unless you pick another fixed-width font. On devices without Courier New, it uses DejaVu Sans Mono, then Liberation Mono. It comes with both:
 
 ```sh
 jolt fonts

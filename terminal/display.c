@@ -579,11 +579,23 @@ static int resolve_face(WCHAR *family) {
     return found;
 }
 
+static int create_default_fonts(int height) {
+    static const char *const fixed_faces[] = { "Courier New", "DejaVu Sans Mono", "Liberation Mono" };
+    WCHAR family[LF_FACESIZE];
+    for (size_t index = 0; index < sizeof fixed_faces / sizeof fixed_faces[0]; index++) {
+        HDC dc = GetDC(view.window);
+        int found = fonts_resolve(dc, fixed_faces[index], family);
+        ReleaseDC(view.window, dc);
+        if (found && create_fonts(family, 1, height)) return 1;
+    }
+    return create_fonts(FONT_FACE, 0, height);
+}
+
 static int load_bitmap_font(void) {
     int height = bitmap_font_pick(view.settings.face, view.settings.font_height);
     struct bitmap_font font;
     if (!height || !bitmap_font_load(view.settings.face, height, &font)) return 0;
-    if (!create_fonts(FONT_FACE, 0, font.height)) {
+    if (!create_default_fonts(font.height)) {
         bitmap_font_free(&font);
         return 0;
     }
@@ -615,7 +627,7 @@ static void load_fonts(void) {
     if (view.settings.face[0] && load_bitmap_font()) return;
     bitmap_font_free(&view.bitmap);
     if (view.settings.face[0] && resolve_face(family) && create_fonts(family, 1, view.settings.font_height)) return;
-    create_fonts(FONT_FACE, 0, view.settings.font_height);
+    create_default_fonts(view.settings.font_height);
 }
 
 static void vterm_colour(VTermColor *colour, COLORREF value) {

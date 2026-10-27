@@ -1,5 +1,8 @@
 #!/bin/sh
 page=/tmp/sfeed_htmlconv.$$.html
+set -- $(stty size < /dev/tty 2>/dev/null)
+width=${2:-80}
+[ "$width" -ge 10 ] 2>/dev/null || width=80
 cat > "$page"
-links -dump "$page"
+links -width "$width" -dump "$page"
 rm -f "$page"

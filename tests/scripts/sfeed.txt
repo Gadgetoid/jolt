@@ -11,5 +11,9 @@ ls /tmp/gopher/feeds | tr '\n' ' ' | sed 's/^/gophermaps /'; echo
 echo piped | awk '{ print | "cat" }'
 lua -e 'os.execute("echo executed")'
 lua -e 'print(io.popen("echo popened"):read())'
+jolt face spleen; jolt font 24
+printf '<p>%s</p>' "$(printf 'wrapping %.0s' $(seq 40))" | sfeed_htmlconv > /tmp/wrapped
+set -- $(stty size); awk -v columns="$2" '{ if (length > widest) widest = length } END { print "wrapped " NR " lines fit " (widest <= columns) }' /tmp/wrapped
+jolt face default; jolt font 16
 killall httpd; echo done
 exit 0

@@ -374,7 +374,8 @@ static void remove_tree(const char *path) {
 
 static char *make_temporary(int slot) {
     char template[] = "/tmp/jpm.XXXXXX";
-    if (!mkdtemp(template)) fail("could not make a working directory in /tmp");
+    mkdir("/tmp", 01777);
+    if (!mkdtemp(template)) fail("could not make a working directory in /tmp: %s", write_problem());
     temporary[slot] = copy_string(template);
     return temporary[slot];
 }

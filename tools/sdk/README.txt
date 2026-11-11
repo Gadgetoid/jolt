@@ -2,9 +2,9 @@ JoLT SDK
 
 Builds Linux programs for JoLT: static ARMv4 ELF files with the JoLT ABI note.
 
-Needs the Windows CE LLVM from https://github.com/Gadgetoid/velo-llvm-builds
+Needs the Windows CE LLVM from https://github.com/grimace-sdk/llvm-builds
 
-    export JORNADA_LLVM_ROOT=/path/to/velo-llvm
+    export GRIMACE_LLVM_ROOT=/path/to/velo-llvm-v3-linux-x86_64
     source jolt-sdk/env.sh    # from bash
     $CC -o hello hello.c
     jolt_check_binary hello

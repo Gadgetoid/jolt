@@ -2,8 +2,7 @@
 set -euo pipefail
 
 workspace=$(cd "$(dirname "$0")/.." && pwd)
-tools=${JORNADA_TOOLS:-"$workspace/../jornada-72x-tools"}
-llvm=${JORNADA_LLVM_ROOT:-"$tools/llvm"}
+llvm=${GRIMACE_LLVM_ROOT:?set GRIMACE_LLVM_ROOT to the Windows CE LLVM}
 deps=${JOLT_DEPS:-"$workspace/build/deps"}
 guest="$workspace/guest"
 build="$workspace/build/guest"

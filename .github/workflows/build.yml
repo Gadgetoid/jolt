@@ -10,8 +10,8 @@ jobs:
     permissions:
       contents: write
     env:
-      JORNADA_LLVM_RELEASE: v3
-      JORNADA_TOOLS_REF: 0240d115c9db0506365796a1f7d941b842bbf5ff
+      LLVM_RELEASE: v3
+      GRIMACE_COMMIT: 09ac27a834e00ff4a6872934e34ba39fbae212e8
       LLVM_NAME: velo-llvm-v3-linux-x86_64
     steps:
       - uses: actions/checkout@v7
@@ -21,9 +21,9 @@ jobs:
 
       - uses: actions/checkout@v7
         with:
-          repository: Gadgetoid/jornada-72x-tools
-          ref: ${{ env.JORNADA_TOOLS_REF }}
-          path: jornada-72x-tools
+          repository: grimace-sdk/grimace
+          ref: ${{ env.GRIMACE_COMMIT }}
+          path: grimace
 
       - name: Install build tools
         run: |
@@ -32,12 +32,12 @@ jobs:
 
       - name: Download the Windows CE LLVM
         run: |
-          url=https://github.com/Gadgetoid/velo-llvm-builds/releases/download/$JORNADA_LLVM_RELEASE
+          url=https://github.com/grimace-sdk/llvm-builds/releases/download/$LLVM_RELEASE
           curl -fsSLO $url/$LLVM_NAME.tar.xz
           curl -fsSLO $url/$LLVM_NAME.tar.xz.sha256
           shasum -a 256 -c $LLVM_NAME.tar.xz.sha256
           tar xf $LLVM_NAME.tar.xz -C "$RUNNER_TEMP"
-          echo "JORNADA_LLVM_ROOT=$RUNNER_TEMP/$LLVM_NAME" >> "$GITHUB_ENV"
+          echo "GRIMACE_LLVM_ROOT=$RUNNER_TEMP/$LLVM_NAME" >> "$GITHUB_ENV"
 
       - uses: actions/cache@v6
         with:
@@ -46,7 +46,7 @@ jobs:
 
       - name: Build and package
         working-directory: jolt
-        run: JORNADA_TOOLS="$GITHUB_WORKSPACE/jornada-72x-tools" tools/build.sh
+        run: GRIMACE="$GITHUB_WORKSPACE/grimace" tools/build.sh
 
       - uses: actions/upload-artifact@v7
         with:

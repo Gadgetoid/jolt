@@ -1,5 +1,5 @@
 jolt_sdk=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-jolt_llvm=${JORNADA_LLVM_ROOT:?set JORNADA_LLVM_ROOT to the Windows CE LLVM}
+jolt_llvm=${GRIMACE_LLVM_ROOT:?set GRIMACE_LLVM_ROOT to the Windows CE LLVM}
 jolt_sysroot="$jolt_sdk/sysroot"
 jolt_linker_script="$jolt_sdk/lib/guest.ld"
 source "$jolt_sdk/lib/flags.sh"

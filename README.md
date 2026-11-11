@@ -23,8 +23,8 @@ The [User Guide & Manual](MANUAL.md) covers everything below in more detail, wit
 
 Needs macOS or Linux with CMake, Ninja, GNU make, Node.js, curl and zip, plus:
 
-- [jornada-72x-tools](https://github.com/Gadgetoid/jornada-72x-tools) beside this repository, or `JORNADA_TOOLS` pointing at it.
-- The Windows CE ARM LLVM from [velo-llvm-builds](https://github.com/Gadgetoid/velo-llvm-builds/releases) (v3), linked as `jornada-72x-tools/llvm` or set as `JORNADA_LLVM_ROOT`.
+- [grimace](https://github.com/grimace-sdk/grimace), with `GRIMACE` pointing at it.
+- The Windows CE LLVM from [llvm-builds](https://github.com/grimace-sdk/llvm-builds/releases) (v3), linked as `grimace/llvm` or set as `GRIMACE_LLVM_ROOT`.
 
 ```sh
 tools/build.sh      # fetch pinned sources, build BusyBox, JoLT-Term and JoltWorker, package
@@ -32,7 +32,7 @@ tools/card.sh [FILE] # optional: emulator card image, build/jolt-card.cf by defa
 tests/emulator.sh   # QA in jornada-72x-emu
 ```
 
-`tools/build.sh` writes `build/dist/jolt-<version>.zip` and `jolt-<version>-gpl-sources.tar` (source for the GPL programs). GitHub Actions (`.github/workflows/build.yml`) runs the same build on Ubuntu with the pinned toolkit commit and LLVM release, uploads both as artifacts, and attaches them to a release for tags. Emulator QA stays local.
+`tools/build.sh` writes `build/dist/jolt-<version>.zip` and `jolt-<version>-gpl-sources.tar` (source for the GPL programs). GitHub Actions (`.github/workflows/build.yml`) runs the same build on Ubuntu with the pinned grimace commit and LLVM release, uploads both as artifacts, and attaches them to a release for tags. Emulator QA stays local.
 
 ## Layout
 

@@ -30,6 +30,7 @@
 #define REPLY_CAPACITY 48
 #define OSC_CAPACITY (JOLT_GUEST_PATH + 16)
 #define FONT_FACE L"Courier New"
+#define FALLBACK_BITMAP_FACE "terminus"
 #define NOTICE_CAPACITY 128
 #define DRAIN_BUDGET_MILLISECONDS 30
 #define FRAME_MILLISECONDS 33
@@ -579,7 +580,7 @@ static int resolve_face(WCHAR *family) {
     return found;
 }
 
-static int create_default_fonts(int height) {
+static int create_fixed_fonts(int height) {
     static const char *const fixed_faces[] = { "Courier New", "DejaVu Sans Mono", "Liberation Mono" };
     WCHAR family[LF_FACESIZE];
     for (size_t index = 0; index < sizeof fixed_faces / sizeof fixed_faces[0]; index++) {
@@ -588,13 +589,17 @@ static int create_default_fonts(int height) {
         ReleaseDC(view.window, dc);
         if (found && create_fonts(family, 1, height)) return 1;
     }
-    return create_fonts(FONT_FACE, 0, height);
+    return 0;
 }
 
-static int load_bitmap_font(void) {
-    int height = bitmap_font_pick(view.settings.face, view.settings.font_height);
+static int create_default_fonts(int height) {
+    return create_fixed_fonts(height) || create_fonts(FONT_FACE, 0, height);
+}
+
+static int load_bitmap_font(const char *face) {
+    int height = bitmap_font_pick(face, view.settings.font_height);
     struct bitmap_font font;
-    if (!height || !bitmap_font_load(view.settings.face, height, &font)) return 0;
+    if (!height || !bitmap_font_load(face, height, &font)) return 0;
     if (!create_default_fonts(font.height)) {
         bitmap_font_free(&font);
         return 0;
@@ -603,7 +608,7 @@ static int load_bitmap_font(void) {
     view.bitmap = font;
     view.cell_width = font.width;
     view.cell_height = font.height;
-    jolt_wide_from_ascii(view.settings.face, view.family, LF_FACESIZE);
+    jolt_wide_from_ascii(face, view.family, LF_FACESIZE);
     return 1;
 }
 
@@ -624,10 +629,11 @@ static int ensure_canvas(int rows, int columns) {
 static void load_fonts(void) {
     WCHAR family[LF_FACESIZE];
     refill_canvas();
-    if (view.settings.face[0] && load_bitmap_font()) return;
+    if (view.settings.face[0] && load_bitmap_font(view.settings.face)) return;
     bitmap_font_free(&view.bitmap);
     if (view.settings.face[0] && resolve_face(family) && create_fonts(family, 1, view.settings.font_height)) return;
-    create_default_fonts(view.settings.font_height);
+    if (create_fixed_fonts(view.settings.font_height) || load_bitmap_font(FALLBACK_BITMAP_FACE)) return;
+    create_fonts(FONT_FACE, 0, view.settings.font_height);
 }
 
 static void vterm_colour(VTermColor *colour, COLORREF value) {

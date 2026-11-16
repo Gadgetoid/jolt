@@ -26,7 +26,14 @@ mkdir -p "$stage/root/tmp"
 for pair in "LICENSE:LICENSE.txt" "THIRD-PARTY.md:THIRD-PARTY.txt" "docs/card-readme.txt:README.txt"; do
     sed 's/$/\r/' "${pair%%:*}" > "$stage/${pair##*:}"
 done
-(cd build/dist/stage && zip -qr -X "../jolt-$version.zip" JoLT)
+(cd build/dist/stage && zip -qr -X "../jolt-$version.zip" JoLT -x '*.DS_Store' '*/._*')
+brain=build/dist/brain
+mkdir -p "$brain/pwsh2-boot/Programs"
+cp -R "$stage" "$brain/"
+printf 'face=terminus\r\n' > "$brain/JoLT/jolt.cfg"
+printf '%s' '34#"\Storage Card\JoLT\JoLT-Term.exe"' > "$brain/pwsh2-boot/Programs/JoLT Terminal.lnk"
+(cd "$brain" && zip -qr -X "../jolt-brain-$version.zip" JoLT pwsh2-boot -x '*.DS_Store' '*/._*')
+rm -rf "$brain"
 gpl_sources=(busybox-1.38.0.tar.bz2 links-2.30.tar.bz2 htop-3.5.3.tar.xz frotz-2.55.tar.gz nano-9.2.tar.xz bash-5.3.tar.gz
     musl-1.2.5.tar.gz compiler-rt-21.1.8.src.tar.xz ncurses-6.6.tar.gz libressl-4.3.3.tar.gz)
 mkdir -p build/dist/sources

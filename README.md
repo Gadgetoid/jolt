@@ -24,7 +24,7 @@ The [User Guide & Manual](MANUAL.md) covers everything below in more detail, wit
 Needs macOS or Linux with CMake, Ninja, GNU make, Node.js, curl and zip, plus:
 
 - [grimace](https://github.com/grimace-sdk/grimace), with `GRIMACE` pointing at it.
-- The Windows CE LLVM from [llvm-builds](https://github.com/grimace-sdk/llvm-builds/releases) (v3), linked as `grimace/llvm` or set as `GRIMACE_LLVM_ROOT`.
+- The Windows CE LLVM from [llvm-builds](https://github.com/grimace-sdk/llvm-builds/releases) (v5), linked as `grimace/llvm` or set as `GRIMACE_LLVM_ROOT`.
 
 ```sh
 tools/build.sh      # fetch pinned sources, build BusyBox, JoLT-Term and JoltWorker, package

@@ -10,9 +10,9 @@ jobs:
     permissions:
       contents: write
     env:
-      LLVM_RELEASE: v3
-      GRIMACE_COMMIT: 09ac27a834e00ff4a6872934e34ba39fbae212e8
-      LLVM_NAME: velo-llvm-v3-linux-x86_64
+      LLVM_RELEASE: v5
+      GRIMACE_COMMIT: 6bde220126bef351b087b81ab8c897dc23490fb6
+      LLVM_NAME: llvm-v5-linux-x86_64
     steps:
       - uses: actions/checkout@v7
         with:

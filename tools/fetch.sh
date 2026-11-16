@@ -18,10 +18,11 @@ fetch() {
 }
 
 unpack() {
-    local name=$1 directory=$2 patch_file=${3:-}
+    local name=$1 directory=$2 patch_file
+    shift 2
     if [[ -d "$deps/$directory" ]]; then return; fi
     tar -xf "$deps/archives/$name" -C "$deps"
-    if [[ -n $patch_file ]]; then patch -d "$deps/$directory" -p1 < "$workspace/$patch_file" > /dev/null; fi
+    for patch_file in "$@"; do patch -d "$deps/$directory" -p1 < "$workspace/$patch_file" > /dev/null; done
 }
 
 fetch musl-1.2.5.tar.gz https://musl.libc.org/releases/musl-1.2.5.tar.gz \
@@ -93,7 +94,7 @@ crypto=https://raw.githubusercontent.com/B-Con/crypto-algorithms/cfbde48414baacf
 fetch sha256.c "$crypto/sha256.c" 4cbc93d30c28cee2a056d6f52cbce6e66ff9450f1d712ee4f59761b9b4486fad
 fetch sha256.h "$crypto/sha256.h" a946e621775fd8251624e77d19f25407c4b6074ab780027e5797b77c7acf79b5
 
-unpack libvterm-0.3.3.tar.gz libvterm-0.3.3 terminal/patches/libvterm-rep.patch
+unpack libvterm-0.3.3.tar.gz libvterm-0.3.3 terminal/patches/libvterm-rep.patch terminal/patches/libvterm-cursor.patch
 unpack compiler-rt-21.1.8.src.tar.xz compiler-rt-21.1.8.src
 mkdir -p "$deps/crypto-algorithms"
 cp "$deps/archives/sha256.c" "$deps/archives/sha256.h" "$deps/crypto-algorithms/"

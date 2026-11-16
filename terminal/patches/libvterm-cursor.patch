@@ -1,0 +1,18 @@
+--- a/src/state.c
++++ b/src/state.c
+@@ -567,7 +567,6 @@
+ {
+   if(save) {
+     state->saved.pos = state->pos;
+-    state->saved.mode.cursor_visible = state->mode.cursor_visible;
+     state->saved.mode.cursor_blink   = state->mode.cursor_blink;
+     state->saved.mode.cursor_shape   = state->mode.cursor_shape;
+ 
+@@ -578,7 +577,6 @@
+ 
+     state->pos = state->saved.pos;
+ 
+-    settermprop_bool(state, VTERM_PROP_CURSORVISIBLE, state->saved.mode.cursor_visible);
+     settermprop_bool(state, VTERM_PROP_CURSORBLINK,   state->saved.mode.cursor_blink);
+     settermprop_int (state, VTERM_PROP_CURSORSHAPE,   state->saved.mode.cursor_shape);
+ 
